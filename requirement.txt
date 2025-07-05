@@ -1,0 +1,818 @@
+Smart Solar Solution Android App
+
+Project Domain / Category
+Mobile App
+
+Abstract / Introduction
+
+The objective of this project is to develop a mobile application that offers a complete solar system installation service. The app will allow users to browse and order solar products (solar panels, stands, batteries, inverters, etc.), book installation services, request maintenance, and receive expert consultations. The app will cater to customers who are looking to set up a solar system, providing them with product recommendations, cost estimates, and after-sale services
+
+Functional Requirements:
+
+1. User Registration and Profile Management
+•	Sign-up/Login: Users can create an account via email, phone number, or social media.
+•	User Profile: Store user information such as contact details, preferred solar system configurations, and order history.
+•	Account Management: Users can update personal details and view their transaction history.
+2. Product Catalog and Filtering
+•	Solar Products Listing: A detailed catalog of solar panels, inverters, batteries, stands (L2, L3, L4), and other accessories.
+•	Product Details: Display detailed descriptions, technical specifications, prices, and installation guides for each product.
+•	Filtering Options: Users can filter products based on capacity, price, brand, and installation type.
+•	Product Comparison: Allow users to compare different products side by side based on their technical specifications and prices.
+3. Installation Service Booking
+•	Service Types: Users can choose installation services such as complete solar system setup, battery replacement, or panel cleaning.
+•	Installation Packages: Provide various service packages depending on system size (e.g., small residential, commercial, industrial).
+•	Location-Based Booking: Users can select their location for service availability.
+•	Installation Scheduling: Users can schedule appointments for installation, maintenance, or consultation at their convenience.
+4. Cost Estimator
+•	Custom Solar System Estimator: Users can enter their energy requirements and location to receive a detailed cost estimate for solar system setup, including equipment, installation, and maintenance.
+•	Dynamic Price Calculation: Provide users with an automatic cost calculation based on their selected products and services.
+•	Financing Options: Display available financing plans or payment installment options if applicable.
+5. Order Management
+•	Cart and Checkout: Users can add products and services to the cart and proceed with the checkout process.
+•	Payment Gateway: bank account transfer 
+•	Order Tracking: Users can track the status of their order (pending, shipped, installed, etc.).
+6. Solar System Maintenance and Support
+•	Maintenance Requests: Users can submit requests for maintenance services (panel cleaning, inverter checks, etc.).
+•	Issue Reporting: Users can report system issues, and the app will route them to the appropriate service team.
+7. Admin Dashboard for Solar Providers
+•	Service Management: Solar service providers can manage incoming service requests, schedule installations, and assign tasks to technicians.
+•	Order Fulfillment: Manage customer orders, including inventory tracking for solar equipment and accessories.
+•	Customer Communication: Admins can send updates, reminders, and promotional offers directly through the app.
+8. Customer Reviews and Feedback
+•	Product Reviews: Users can rate and review the products they’ve purchased and installed.
+•	Service Feedback: After installation or maintenance, users can provide feedback on the quality of service.
+•	Rating System: Display product and service ratings to help other users make informed decisions.
+9. Notifications and Alerts
+•	Order and Service Updates: Send notifications to users regarding their orders, service bookings, and maintenance schedules.
+•	Product Alerts: Notify users about new product arrivals, discounts, or offers.
+•	Renewal Reminders: Remind users of upcoming maintenance requirements or product replacements (e.g., battery replacement cycle).
+10. Solar Consultation and Knowledge Base
+•	Expert Consultation: Users can request consultations with solar energy experts to get advice on system setup, energy savings, or product selection.
+•	Knowledge Base: Provide a section with articles, tutorials, and videos on solar energy systems, installation guides, and troubleshooting tips.
+11. Product and Service Customization
+•	Tailored Solutions: Allow users to customize their solar system configurations based on energy needs, such as selecting specific panel types, battery capacities, and inverter sizes.
+•	Bundled Packages: Offer pre-defined solar system packages (e.g., residential, commercial, off-grid) that include all necessary components and installation services.
+Tools: 
+Flutter framework using dart language
+
+Entity Relationship (ER) Diagram uml code
+@startuml
+entity User {
+  UserID
+  Name
+  Email
+  PhoneNumber
+  Password
+  Address
+}
+
+entity Product {
+  ProductID
+  Name
+  Description
+  Price
+  Category
+  Brand
+  Capacity
+}
+
+entity Order {
+  OrderID
+  UserID
+  ProductID
+  OrderDate
+  TotalAmount
+  Status
+}
+
+entity Service {
+  ServiceID
+  ServiceType
+  Description
+  Price
+  Duration
+}
+
+entity Technician {
+  TechnicianID
+  Name
+  Email
+  PhoneNumber
+  Specialization
+}
+
+entity Review {
+  ReviewID
+  UserID
+  ProductID
+  Rating
+  Comment
+  Date
+}
+
+entity Payment {
+  PaymentID
+  OrderID
+  Amount
+  PaymentMethod
+  PaymentDate
+}
+
+User ||--o{ Order : Places
+User ||--o{ Service : Requests
+User ||--o{ Review : Writes
+Order ||--o{ Product : Contains
+Service ||--o{ Technician : Assigned to
+Review ||--o{ Product : For
+Payment ||--o{ Order : Associated with
+@enduml
+
+Class Diagram uml code
+
+@startuml
+' Class Diagram for Smart Solar Solution
+
+class User {
+  +UserID: int (PK)
+  +Name: string
+  +Email: string
+  +PhoneNumber: string
+  +Password: string
+  +Address: string
+  +ProfilePicture: string
+  +PreferredSystemConfig: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+class Product {
+  +ProductID: int (PK)
+  +Name: string
+  +Description: string
+  +Category: string
+  +Brand: string
+  +Capacity: string
+  +Price: float
+  +InstallationType: string
+  +TechnicalSpecifications: string
+  +ImageURL: string
+  +StockQuantity: int
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+class Order {
+  +OrderID: int (PK)
+  +UserID: int (FK)
+  +OrderDate: datetime
+  +TotalAmount: float
+  +Status: string
+  +PaymentMethod: string
+  +ShippingAddress: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+class OrderItem {
+  +OrderItemID: int (PK)
+  +OrderID: int (FK)
+  +ProductID: int (FK)
+  +Quantity: int
+  +Price: float
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+class Service {
+  +ServiceID: int (PK)
+  +ServiceType: string
+  +Description: string
+  +Price: float
+  +Duration: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+class ServiceBooking {
+  +BookingID: int (PK)
+  +UserID: int (FK)
+  +ServiceID: int (FK)
+  +BookingDate: datetime
+  +ScheduledDate: datetime
+  +Location: string
+  +Status: string
+  +Notes: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+class CostEstimate {
+  +EstimateID: int (PK)
+  +UserID: int (FK)
+  +EnergyRequirement: string
+  +Location: string
+  +TotalCost: float
+  +EquipmentCost: float
+  +InstallationCost: float
+  +MaintenanceCost: float
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+class MaintenanceRequest {
+  +RequestID: int (PK)
+  +UserID: int (FK)
+  +ServiceID: int (FK)
+  +IssueDescription: string
+  +RequestDate: datetime
+  +Status: string
+  +AssignedTechnician: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+class Review {
+  +ReviewID: int (PK)
+  +UserID: int (FK)
+  +ProductID: int (FK)
+  +ServiceID: int (FK)
+  +Rating: int
+  +Comment: string
+  +ReviewDate: datetime
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+class Notification {
+  +NotificationID: int (PK)
+  +UserID: int (FK)
+  +Message: string
+  +Type: string
+  +SentDate: datetime
+  +Status: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+class Admin {
+  +AdminID: int (PK)
+  +Name: string
+  +Email: string
+  +Password: string
+  +Role: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+class KnowledgeBase {
+  +ArticleID: int (PK)
+  +Title: string
+  +Content: string
+  +Category: string
+  +Author: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+class Consultation {
+  +ConsultationID: int (PK)
+  +UserID: int (FK)
+  +ExpertID: int (FK)
+  +ConsultationDate: datetime
+  +Duration: string
+  +Notes: string
+  +Status: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+class Expert {
+  +ExpertID: int (PK)
+  +Name: string
+  +Email: string
+  +PhoneNumber: string
+  +Specialization: string
+  +Availability: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+class Payment {
+  +PaymentID: int (PK)
+  +OrderID: int (FK)
+  +Amount: float
+  +PaymentMethod: string
+  +TransactionDate: datetime
+  +Status: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+' Relationships
+User "1" -- "many" Order : Places
+User "1" -- "many" ServiceBooking : Books
+User "1" -- "many" MaintenanceRequest : Requests
+User "1" -- "many" Review : Writes
+User "1" -- "many" Notification : Receives
+User "1" -- "many" Consultation : Requests
+User "1" -- "many" CostEstimate : Generates
+
+Product "1" -- "many" OrderItem : Part of
+Product "1" -- "many" Review : Reviewed in
+
+Order "1" -- "many" OrderItem : Contains
+Order "1" -- "1" Payment : Linked to
+
+Service "1" -- "many" ServiceBooking : Booked in
+Service "1" -- "many" MaintenanceRequest : Requested in
+Service "1" -- "many" Review : Reviewed in
+
+Admin "1" -- "many" Order : Manages
+Admin "1" -- "many" ServiceBooking : Manages
+Admin "1" -- "many" MaintenanceRequest : Manages
+
+Expert "1" -- "many" Consultation : Provides
+
+KnowledgeBase "many" -- "many" User : Accessed by
+
+@enduml
+
+Database Design uml code
+
+@startuml
+' Database Diagram for Smart Solar Solution
+
+entity User {
+  +UserID: int (PK)
+  +Name: string
+  +Email: string
+  +PhoneNumber: string
+  +Password: string
+  +Address: string
+  +ProfilePicture: string
+  +PreferredSystemConfig: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+entity Product {
+  +ProductID: int (PK)
+  +Name: string
+  +Description: string
+  +Category: string
+  +Brand: string
+  +Capacity: string
+  +Price: float
+  +InstallationType: string
+  +TechnicalSpecifications: string
+  +ImageURL: string
+  +StockQuantity: int
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+entity Order {
+  +OrderID: int (PK)
+  +UserID: int (FK)
+  +OrderDate: datetime
+  +TotalAmount: float
+  +Status: string
+  +PaymentMethod: string
+  +ShippingAddress: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+entity OrderItem {
+  +OrderItemID: int (PK)
+  +OrderID: int (FK)
+  +ProductID: int (FK)
+  +Quantity: int
+  +Price: float
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+entity Service {
+  +ServiceID: int (PK)
+  +ServiceType: string
+  +Description: string
+  +Price: float
+  +Duration: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+entity ServiceBooking {
+  +BookingID: int (PK)
+  +UserID: int (FK)
+  +ServiceID: int (FK)
+  +BookingDate: datetime
+  +ScheduledDate: datetime
+  +Location: string
+  +Status: string
+  +Notes: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+entity CostEstimate {
+  +EstimateID: int (PK)
+  +UserID: int (FK)
+  +EnergyRequirement: string
+  +Location: string
+  +TotalCost: float
+  +EquipmentCost: float
+  +InstallationCost: float
+  +MaintenanceCost: float
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+entity MaintenanceRequest {
+  +RequestID: int (PK)
+  +UserID: int (FK)
+  +ServiceID: int (FK)
+  +IssueDescription: string
+  +RequestDate: datetime
+  +Status: string
+  +AssignedTechnician: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+entity Review {
+  +ReviewID: int (PK)
+  +UserID: int (FK)
+  +ProductID: int (FK)
+  +ServiceID: int (FK)
+  +Rating: int
+  +Comment: string
+  +ReviewDate: datetime
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+entity Notification {
+  +NotificationID: int (PK)
+  +UserID: int (FK)
+  +Message: string
+  +Type: string
+  +SentDate: datetime
+  +Status: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+entity Admin {
+  +AdminID: int (PK)
+  +Name: string
+  +Email: string
+  +Password: string
+  +Role: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+entity KnowledgeBase {
+  +ArticleID: int (PK)
+  +Title: string
+  +Content: string
+  +Category: string
+  +Author: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+entity Consultation {
+  +ConsultationID: int (PK)
+  +UserID: int (FK)
+  +ExpertID: int (FK)
+  +ConsultationDate: datetime
+  +Duration: string
+  +Notes: string
+  +Status: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+entity Expert {
+  +ExpertID: int (PK)
+  +Name: string
+  +Email: string
+  +PhoneNumber: string
+  +Specialization: string
+  +Availability: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+entity Payment {
+  +PaymentID: int (PK)
+  +OrderID: int (FK)
+  +Amount: float
+  +PaymentMethod: string
+  +TransactionDate: datetime
+  +Status: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+' Relationships
+User ||--o{ Order : Places
+User ||--o{ ServiceBooking : Books
+User ||--o{ MaintenanceRequest : Requests
+User ||--o{ Review : Writes
+User ||--o{ Notification : Receives
+User ||--o{ Consultation : Requests
+User ||--o{ CostEstimate : Generates
+
+Product ||--o{ OrderItem : Part of
+Product ||--o{ Review : Reviewed in
+
+Order ||--o{ OrderItem : Contains
+Order ||--|| Payment : Linked to
+
+Service ||--o{ ServiceBooking : Booked in
+Service ||--o{ MaintenanceRequest : Requested in
+Service ||--o{ Review : Reviewed in
+
+Admin ||--o{ Order : Manages
+Admin ||--o{ ServiceBooking : Manages
+Admin ||--o{ MaintenanceRequest : Manages
+
+Expert ||--o{ Consultation : Provides
+
+KnowledgeBase }o--o{ User : Accessed by
+
+@enduml
+
+Use cases
+
+Sign-up/Login (UC-01): Users sign up or log in using email, phone, or social media. This action allows users to create an account or log in to access the app’s features. If the registration fails, an error message will be shown, prompting the user to retry. Users must have a valid email, phone number, or social media account. Once completed, the user account is either created or logged in successfully. The exception to this process is network issues that could prevent sign-up or login.
+
+User Profile (UC-02): Users can view and edit their profiles, which store information such as contact details and order history. This action requires the user to be logged in. Once the changes are made, the profile is updated successfully.
+
+Solar Products Listing (UC-03): Users can browse a catalog of solar products, including solar panels, inverters, batteries, and stands. The user must be logged in to view the available products.
+
+Product Details (UC-04): Users can view detailed information about each product, including technical specifications, prices, and installation guides. The user must be logged in to access product details.
+
+Filtering Options (UC-05): Users can apply filters to the product catalog, narrowing down choices based on capacity, price, brand, and installation type. The user must be logged in to use the filtering options, and the filtered product list is displayed after selections are made.
+
+Product Comparison (UC-06): Users can compare different products side by side, viewing a comparison of their technical specifications and prices. The user must be logged in, and the comparison table will be displayed after the products are selected.
+
+Service Types (UC-07): Users can select a type of installation service, such as complete solar system setup, battery replacement, or panel cleaning. The user must be logged in to choose the service type, and the selected service will be confirmed.
+
+Installation Packages (UC-08): Users can select a service package based on system size, with options for small residential, commercial, or industrial setups. Being logged in is required, and after selection, the service package is confirmed.
+
+Location-Based Booking (UC-09): Users can select their location to ensure that services are available in their area. The user must be logged in to choose their location, and the system confirms the selected location for service availability.
+
+Installation Scheduling (UC-10): Users can schedule an appointment for installation or maintenance at a time that is convenient for them. The user must be logged in to schedule the appointment, and once selected, the appointment is confirmed.
+
+Custom Solar System Estimator (UC-11): Users can input their energy requirements and location to receive a detailed cost estimate for setting up a solar system. The user must be logged in to use the estimator, and a cost estimate is provided after inputs are made.
+
+Dynamic Price Calculation (UC-12): Users can view real-time cost updates based on selected products and services. The user must be logged in, and the updated cost will be displayed as selections are made.
+
+Order Tracking (UC-13): Users can track the status of their order (pending, shipped, installed, etc.). The user must be logged in to track the order, and the status is updated as the order progresses.
+
+Maintenance Requests (UC-14): Users can submit a request for maintenance services, including panel cleaning, inverter checks, etc. The user must be logged in to submit the request, which will be confirmed upon submission.
+
+Issue Reporting (UC-15): Users can report system issues, which are routed to the appropriate service team for resolution. The user must be logged in to report an issue, and the report is submitted once completed.
+
+Service Management (UC-16): Admins manage incoming service requests and schedule installations by assigning tasks to technicians. Admins must be logged in to manage services, and the service request is processed after assignment.
+
+Order Fulfillment (UC-17): Admins handle customer orders and track inventory to ensure that orders are processed and delivered. Admins must be logged in to manage orders, and once completed, the order is fulfilled.
+
+Customer Communication (UC-18): Admins send updates, reminders, and promotional offers to users, keeping them informed and engaged. Admins must be logged in to send communication, which is then successfully delivered.
+
+Product Reviews (UC-19): Users can rate and review products based on their experience. The user must be logged in to submit a review, and once done, the review is posted successfully.
+
+Service Feedback (UC-20): Users provide feedback on installation or maintenance services, which helps improve service quality. The user must be logged in to submit feedback, and the feedback is successfully recorded.
+
+Rating System (UC-21): Users can view product and service ratings, which help others make informed purchasing decisions. The user must be logged in, and ratings will be displayed upon access.
+
+Order and Service Updates (UC-22): Users receive notifications about their orders and service bookings, keeping them updated on status changes. Users must be logged in to receive notifications, which are then delivered as updates.
+
+Product Alerts (UC-23): Users receive alerts about new products, discounts, or offers. The user must be logged in to receive alerts, which are delivered to them as new updates.
+
+Expert Consultation (UC-24): Users can request advice from solar energy experts on system setup, energy savings, or product selection. Users must be logged in to schedule a consultation, and it will be confirmed once the request is made.
+
+Knowledge Base (UC-25): Users can access articles, tutorials, and videos about solar energy systems, providing educational resources. The user must be logged in to access the knowledge base, and it will be successfully opened after login.
+
+Tailored Solutions (UC-26): Users can customize their solar system setup by selecting specific panel types, battery capacities, and inverter sizes. The user must be logged in to save their custom setup, which will be confirmed once the setup is completed.
+
+Bundled Packages (UC-27): Users can select pre-defined solar system packages for residential, commercial, or off-grid systems. The user must be logged in to choose a package, and once selected, the package is confirmed.
+
+Sequence Diagram uml code
+@startuml
+' Class Diagram for Smart Solar Solution
+
+class User {
+  +UserID: int (PK)
+  +Name: string
+  +Email: string
+  +PhoneNumber: string
+  +Password: string
+  +Address: string
+  +ProfilePicture: string
+  +PreferredSystemConfig: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+class Product {
+  +ProductID: int (PK)
+  +Name: string
+  +Description: string
+  +Category: string
+  +Brand: string
+  +Capacity: string
+  +Price: float
+  +InstallationType: string
+  +TechnicalSpecifications: string
+  +ImageURL: string
+  +StockQuantity: int
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+class Order {
+  +OrderID: int (PK)
+  +UserID: int (FK)
+  +OrderDate: datetime
+  +TotalAmount: float
+  +Status: string
+  +PaymentMethod: string
+  +ShippingAddress: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+class OrderItem {
+  +OrderItemID: int (PK)
+  +OrderID: int (FK)
+  +ProductID: int (FK)
+  +Quantity: int
+  +Price: float
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+class Service {
+  +ServiceID: int (PK)
+  +ServiceType: string
+  +Description: string
+  +Price: float
+  +Duration: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+class ServiceBooking {
+  +BookingID: int (PK)
+  +UserID: int (FK)
+  +ServiceID: int (FK)
+  +BookingDate: datetime
+  +ScheduledDate: datetime
+  +Location: string
+  +Status: string
+  +Notes: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+class CostEstimate {
+  +EstimateID: int (PK)
+  +UserID: int (FK)
+  +EnergyRequirement: string
+  +Location: string
+  +TotalCost: float
+  +EquipmentCost: float
+  +InstallationCost: float
+  +MaintenanceCost: float
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+class MaintenanceRequest {
+  +RequestID: int (PK)
+  +UserID: int (FK)
+  +ServiceID: int (FK)
+  +IssueDescription: string
+  +RequestDate: datetime
+  +Status: string
+  +AssignedTechnician: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+class Review {
+  +ReviewID: int (PK)
+  +UserID: int (FK)
+  +ProductID: int (FK)
+  +ServiceID: int (FK)
+  +Rating: int
+  +Comment: string
+  +ReviewDate: datetime
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+class Notification {
+  +NotificationID: int (PK)
+  +UserID: int (FK)
+  +Message: string
+  +Type: string
+  +SentDate: datetime
+  +Status: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+class Admin {
+  +AdminID: int (PK)
+  +Name: string
+  +Email: string
+  +Password: string
+  +Role: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+class KnowledgeBase {
+  +ArticleID: int (PK)
+  +Title: string
+  +Content: string
+  +Category: string
+  +Author: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+class Consultation {
+  +ConsultationID: int (PK)
+  +UserID: int (FK)
+  +ExpertID: int (FK)
+  +ConsultationDate: datetime
+  +Duration: string
+  +Notes: string
+  +Status: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+class Expert {
+  +ExpertID: int (PK)
+  +Name: string
+  +Email: string
+  +PhoneNumber: string
+  +Specialization: string
+  +Availability: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+class Payment {
+  +PaymentID: int (PK)
+  +OrderID: int (FK)
+  +Amount: float
+  +PaymentMethod: string
+  +TransactionDate: datetime
+  +Status: string
+  +CreatedAt: datetime
+  +UpdatedAt: datetime
+}
+
+' Relationships
+User "1" -- "many" Order : Places
+User "1" -- "many" ServiceBooking : Books
+User "1" -- "many" MaintenanceRequest : Requests
+User "1" -- "many" Review : Writes
+User "1" -- "many" Notification : Receives
+User "1" -- "many" Consultation : Requests
+User "1" -- "many" CostEstimate : Generates
+
+Product "1" -- "many" OrderItem : Part of
+Product "1" -- "many" Review : Reviewed in
+
+Order "1" -- "many" OrderItem : Contains
+Order "1" -- "1" Payment : Linked to
+
+Service "1" -- "many" ServiceBooking : Booked in
+Service "1" -- "many" MaintenanceRequest : Requested in
+Service "1" -- "many" Review : Reviewed in
+
+Admin "1" -- "many" Order : Manages
+Admin "1" -- "many" ServiceBooking : Manages
+Admin "1" -- "many" MaintenanceRequest : Manages
+
+Expert "1" -- "many" Consultation : Provides
+
+KnowledgeBase "many" -- "many" User : Accessed by
+
+@enduml
+ use a beautiful and elegant user interface with smooth user experience .USER INTERFACE MUST BE SUITABLE FOR EVERY of screen without any overflow error and please use User Friedly color scheme and ensure application wide conscience. 
+Use try/catch block in all critical function for elegant Exception handling    
+also add comments in code
+
+

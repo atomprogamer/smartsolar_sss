@@ -1,0 +1,1 @@
+ C:\\mycode\\smartsolar_sss\\.dart_tool\\flutter_build\\8b89ddca6579fe5bd994af1bc2d42ef1\\native_assets.json: 
