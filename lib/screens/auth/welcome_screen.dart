@@ -3,7 +3,6 @@ import 'package:flutter/gestures.dart';
 
 import '../../utils/routes.dart';
 import '../../utils/theme.dart';
-import '../../widgets/app_drawer.dart';
 
 /// Welcome screen shown after splash screen if user is not logged in
 class WelcomeScreen extends StatelessWidget {
@@ -14,11 +13,6 @@ class WelcomeScreen extends StatelessWidget {
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Welcome'),
-        centerTitle: true,
-      ),
-      drawer: AppDrawer(),
       body: Container(
         width: double.infinity,
         height: double.infinity,
