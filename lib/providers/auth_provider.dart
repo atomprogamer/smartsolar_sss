@@ -6,51 +6,55 @@ import '../models/user_model.dart';
 import '../services/auth_service.dart';
 
 /// Provider class for managing authentication state
+/// Provides comprehensive authentication state management for Smart Solar Solution app
+/// Supports email/password and Google sign-in with user approval workflow
 class AuthProvider with ChangeNotifier {
   final AuthService _authService;
   UserModel? _user;
   bool _isLoading = false;
   String? _error;
 
-  /// Constructor
+  /// Constructor requiring SharedPreferences instance
   AuthProvider(SharedPreferences prefs) : _authService = AuthService(prefs) {
     _initializeUser();
   }
 
-  /// Get current user
+  /// Get current authenticated user
   UserModel? get user => _user;
 
-  /// Check if user is logged in
+  /// Check if user is currently logged in
   bool get isLoggedIn => _user != null;
 
-  /// Check if loading
+  /// Check if authentication operation is in progress
   bool get isLoading => _isLoading;
 
-  /// Get error message
+  /// Get current error message if any
   String? get error => _error;
 
-  /// Check if user is admin
+  /// Check if current user is admin
   bool get isAdmin => _authService.isAdmin();
 
-  /// Check if user is expert
+  /// Check if current user is expert
   bool get isExpert => _authService.isExpert();
 
-  /// Check if user is technician
+  /// Check if current user is technician
   bool get isTechnician => _authService.isTechnician();
 
-  /// Check if user is staff (admin, expert, or technician)
+  /// Check if current user is staff (admin, expert, or technician)
   bool get isStaff => _authService.isStaff();
 
-  /// Check if user is customer
+  /// Check if current user is customer
   bool get isCustomer => _authService.isCustomer();
 
-  /// Check if user is vendor
+  /// Check if current user is vendor
   bool get isVendor => _authService.isVendor();
 
-  /// Initialize user from Firebase
+  /// Initialize user from Firebase authentication state
+  /// Called automatically during provider initialization
   Future<void> _initializeUser() async {
     try {
       _isLoading = true;
+      _error = null;
       notifyListeners();
 
       _user = await _authService.getUserData();
@@ -59,12 +63,15 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
     } catch (e) {
       _isLoading = false;
-      _error = e.toString();
+      _error = 'Failed to initialize user: ${e.toString()}';
       notifyListeners();
+      print('Error initializing user: $e');
     }
   }
 
   /// Sign in with email and password
+  /// Returns true if successful, false otherwise
+  /// Sets error message if authentication fails
   Future<bool> signInWithEmailAndPassword(String email, String password) async {
     try {
       _isLoading = true;
@@ -79,14 +86,17 @@ class AuthProvider with ChangeNotifier {
       return _user != null;
     } catch (e) {
       _isLoading = false;
-      _error = e.toString();
+      _error = _formatErrorMessage(e.toString());
       notifyListeners();
+      print('Error signing in with email and password: $e');
 
       return false;
     }
   }
 
-  /// Sign in with Google
+  /// Sign in with Google account
+  /// Returns true if successful, false otherwise
+  /// Creates new user if doesn't exist, validates approval status
   Future<bool> signInWithGoogle() async {
     try {
       _isLoading = true;
@@ -101,36 +111,17 @@ class AuthProvider with ChangeNotifier {
       return _user != null;
     } catch (e) {
       _isLoading = false;
-      _error = e.toString();
+      _error = _formatErrorMessage(e.toString());
       notifyListeners();
+      print('Error signing in with Google: $e');
 
       return false;
     }
   }
 
-  /// Sign in with Facebook
-  Future<bool> signInWithFacebook() async {
-    try {
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
-
-      _user = await _authService.signInWithFacebook();
-
-      _isLoading = false;
-      notifyListeners();
-
-      return _user != null;
-    } catch (e) {
-      _isLoading = false;
-      _error = e.toString();
-      notifyListeners();
-
-      return false;
-    }
-  }
-
-  /// Register customer
+  /// Register new customer with email and password
+  /// Creates user account with pending approval status
+  /// Returns true if successful, false otherwise
   Future<bool> registerCustomer({
     required String email,
     required String password,
@@ -163,14 +154,17 @@ class AuthProvider with ChangeNotifier {
       return true;
     } catch (e) {
       _isLoading = false;
-      _error = e.toString();
+      _error = _formatErrorMessage(e.toString());
       notifyListeners();
+      print('Error registering customer: $e');
 
       return false;
     }
   }
 
-  /// Register staff
+  /// Register new staff member (expert, technician, admin)
+  /// Creates user account with pending approval status
+  /// Returns true if successful, false otherwise
   Future<bool> registerStaff({
     required String email,
     required String password,
@@ -199,17 +193,20 @@ class AuthProvider with ChangeNotifier {
       return true;
     } catch (e) {
       _isLoading = false;
-      _error = e.toString();
+      _error = _formatErrorMessage(e.toString());
       notifyListeners();
+      print('Error registering staff: $e');
 
       return false;
     }
   }
 
-  /// Sign out
+  /// Sign out current user from all services
+  /// Clears user data and authentication state
   Future<void> signOut() async {
     try {
       _isLoading = true;
+      _error = null;
       notifyListeners();
 
       await _authService.signOut();
@@ -219,12 +216,15 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
     } catch (e) {
       _isLoading = false;
-      _error = e.toString();
+      _error = 'Failed to sign out: ${e.toString()}';
       notifyListeners();
+      print('Error signing out: $e');
     }
   }
 
-  /// Reset password
+  /// Send password reset email to user
+  /// Used for password recovery functionality
+  /// Returns true if successful, false otherwise
   Future<bool> resetPassword(String email) async {
     try {
       _isLoading = true;
@@ -239,14 +239,17 @@ class AuthProvider with ChangeNotifier {
       return true;
     } catch (e) {
       _isLoading = false;
-      _error = e.toString();
+      _error = _formatErrorMessage(e.toString());
       notifyListeners();
+      print('Error resetting password: $e');
 
       return false;
     }
   }
 
-  /// Update user profile
+  /// Update user profile information
+  /// Updates specified fields and maintains updatedAt timestamp
+  /// Returns true if successful, false otherwise
   Future<bool> updateUserProfile({
     required String name,
     required String phoneNumber,
@@ -275,17 +278,20 @@ class AuthProvider with ChangeNotifier {
       return _user != null;
     } catch (e) {
       _isLoading = false;
-      _error = e.toString();
+      _error = _formatErrorMessage(e.toString());
       notifyListeners();
+      print('Error updating user profile: $e');
 
       return false;
     }
   }
 
-  /// Refresh user data
+  /// Refresh user data from Firestore
+  /// Useful for updating user information after external changes
   Future<void> refreshUser() async {
     try {
       _isLoading = true;
+      _error = null;
       notifyListeners();
 
       _user = await _authService.getUserData();
@@ -294,15 +300,62 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
     } catch (e) {
       _isLoading = false;
-      _error = e.toString();
+      _error = 'Failed to refresh user data: ${e.toString()}';
       notifyListeners();
+      print('Error refreshing user: $e');
     }
   }
 
-  /// Clear error
+  /// Clear current error message
+  /// Used to reset error state after displaying error to user
   void clearError() {
     _error = null;
     notifyListeners();
+  }
+
+  /// Format error messages for user-friendly display
+  /// Converts technical error messages to readable format
+  String _formatErrorMessage(String error) {
+    if (error.contains('user-not-found')) {
+      return 'No account found with this email address';
+    } else if (error.contains('wrong-password')) {
+      return 'Incorrect password. Please try again';
+    } else if (error.contains('email-already-in-use')) {
+      return 'An account already exists with this email address';
+    } else if (error.contains('weak-password')) {
+      return 'Password is too weak. Please choose a stronger password';
+    } else if (error.contains('invalid-email')) {
+      return 'Please enter a valid email address';
+    } else if (error.contains('network-request-failed')) {
+      return 'Network error. Please check your internet connection';
+    } else if (error.contains('too-many-requests')) {
+      return 'Too many attempts. Please try again later';
+    } else if (error.contains('pending approval')) {
+      return 'Your account is pending approval. Please wait for admin approval';
+    } else if (error.contains('not approved')) {
+      return 'Your account is not approved yet. Please contact support';
+    } else {
+      return error.replaceAll('Exception: ', '');
+    }
+  }
+
+  /// Check if user has specific permissions based on user type
+  /// Used for role-based access control throughout the app
+  bool hasPermission(String permission) {
+    switch (permission) {
+      case 'manage_orders':
+        return isAdmin || isStaff;
+      case 'manage_products':
+        return isAdmin;
+      case 'view_analytics':
+        return isAdmin || isExpert;
+      case 'manage_services':
+        return isAdmin || isTechnician || isExpert;
+      case 'view_customer_data':
+        return isStaff;
+      default:
+        return false;
+    }
   }
 }
 
