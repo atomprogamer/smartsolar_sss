@@ -44,6 +44,12 @@
       "languageVersion": "3.0"
     },
     {
+      "name": "carousel_slider",
+      "rootUri": "file:///C:/Users/saddam/AppData/Local/Pub/Cache/hosted/pub.dev/carousel_slider-5.1.1",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
       "name": "characters",
       "rootUri": "file:///C:/Users/saddam/AppData/Local/Pub/Cache/hosted/pub.dev/characters-1.4.0",
       "packageUri": "lib/",
