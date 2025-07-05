@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/app_drawer.dart';
 
 /// CustomerDashboardScreen is the main screen for customers after login
 class CustomerDashboardScreen extends StatelessWidget {
@@ -10,6 +11,7 @@ class CustomerDashboardScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text('Customer Dashboard'),
       ),
+      drawer: AppDrawer(),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
