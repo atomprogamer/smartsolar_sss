@@ -948,44 +948,72 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  void _showAddProductDialog() {
-    // Implement add product dialog
+  void _showAddProductInfoDialog() {
+    // Show dialog to inform user to go to Product Management tab
     showDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: Text('Add Product'),
-            content: Text(
-              'Add product functionality will be implemented here.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('Close'),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        title: Text('Add Product'),
+        content: Text(
+          'To add a new product, please go to the "Product Management" tab and use the "Add Product" button there.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Switch to Product Management tab
+              setState(() {
+                _selectedIndex = 2; // Index of Product Management tab
+              });
+            },
+            child: Text('Go to Product Management'),
           ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close'),
+          ),
+        ],
+      ),
     );
   }
 
-  void _showEditProductDialog(dynamic product) {
-    // Implement edit product dialog
+  // Placeholder for original method to avoid breaking references
+  void _showAddProductDialog() {
+    _showAddProductInfoDialog();
+  }
+
+  void _showEditProductInfoDialog(dynamic product) {
+    // Show dialog to inform user to go to Product Management tab
     showDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: Text('Edit Product'),
-            content: Text(
-              'Edit product functionality will be implemented here.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('Close'),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        title: Text('Edit Product'),
+        content: Text(
+          'To edit this product, please go to the "Product Management" tab and use the edit button next to the product.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Switch to Product Management tab
+              setState(() {
+                _selectedIndex = 2; // Index of Product Management tab
+              });
+            },
+            child: Text('Go to Product Management'),
           ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close'),
+          ),
+        ],
+      ),
     );
+  }
+
+  // Placeholder for original method to avoid breaking references
+  void _showEditProductDialog(dynamic product) {
+    _showEditProductInfoDialog(product);
   }
 
   void _showDeleteProductDialog(dynamic product) {

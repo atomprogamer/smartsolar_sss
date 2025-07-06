@@ -120,9 +120,20 @@ class UserProvider with ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
+      print('[DEBUG_LOG] Fetching all users from Firestore...');
       final usersSnapshot = await _firestore.collection('users').get();
+      print('[DEBUG_LOG] Fetched ${usersSnapshot.docs.length} users from Firestore');
 
-      _users = usersSnapshot.docs.map((doc) => UserModel.fromSnapshot(doc)).toList();
+      _users = usersSnapshot.docs.map((doc) {
+        try {
+          return UserModel.fromSnapshot(doc);
+        } catch (e) {
+          print('[DEBUG_LOG] Error parsing user document ${doc.id}: $e');
+          return null;
+        }
+      }).whereType<UserModel>().toList();
+
+      print('[DEBUG_LOG] Successfully parsed ${_users.length} users');
 
       // Update local counts based on the fetched users
       _totalUserCount = _users.length;
@@ -131,11 +142,14 @@ class UserProvider with ChangeNotifier {
       _rejectedUserCount = _users.where((user) => user.approvalStatus == ApprovalStatus.rejected).length;
       _lastCacheUpdate = DateTime.now();
 
+      print('[DEBUG_LOG] User counts - Total: $_totalUserCount, Pending: $_pendingUserCount, Approved: $_approvedUserCount, Rejected: $_rejectedUserCount');
+
       _isLoading = false;
       notifyListeners();
     } catch (e) {
       _isLoading = false;
       _error = 'Error fetching all users: ${e.toString()}';
+      print('[DEBUG_LOG] Error fetching all users: $e');
       notifyListeners();
     }
   }

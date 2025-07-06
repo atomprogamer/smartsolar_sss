@@ -12,7 +12,9 @@ import '../../utils/theme.dart';
 /// ManageProductsScreen allows admins to manage products
 /// including adding, editing, and deleting products
 class ManageProductsScreen extends StatefulWidget {
-  const ManageProductsScreen({super.key});
+  final ProductModel? productToEdit;
+
+  const ManageProductsScreen({super.key, this.productToEdit});
 
   @override
   _ManageProductsScreenState createState() => _ManageProductsScreenState();
@@ -23,6 +25,33 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> {
   bool _isLoading = false;
   bool _isEditing = false;
   String? _selectedProductId;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize form fields if a product is passed for editing
+    if (widget.productToEdit != null) {
+      _initializeProductForEditing(widget.productToEdit!);
+    }
+  }
+
+  void _initializeProductForEditing(ProductModel product) {
+    setState(() {
+      _isEditing = true;
+      _selectedProductId = product.id;
+      _nameController.text = product.name;
+      _descriptionController.text = product.description;
+      _selectedCategory = product.category;
+      _brandController.text = product.brand;
+      _capacityController.text = product.capacity;
+      _priceController.text = product.price.toString();
+      _stockQuantityController.text = product.stockQuantity.toString();
+      _technicalSpecificationsController.text = product.technicalSpecifications ?? '';
+      _installationTypeController.text = product.installationType ?? '';
+      _existingImageUrls = List.from(product.imageUrls);
+      _selectedImages = [];
+    });
+  }
 
   // Form fields
   final _nameController = TextEditingController();
