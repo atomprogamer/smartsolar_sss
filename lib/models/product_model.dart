@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 
 /// Enum for product categories
 enum ProductCategory {
@@ -177,5 +178,23 @@ class ProductModel {
       return imageUrls[0];
     }
     return 'assets/images/placeholder_product.png'; // Local asset placeholder
+  }
+
+  /// Get category icon data
+  IconData get categoryIconData {
+    switch (category) {
+      case ProductCategory.solarPanel:
+        return Icons.solar_power;
+      case ProductCategory.battery:
+        return Icons.battery_full;
+      case ProductCategory.inverter:
+        return Icons.electrical_services;
+      case ProductCategory.stand:
+        return Icons.architecture;
+      case ProductCategory.accessory:
+        return Icons.cable;
+      default:
+        return Icons.inventory;
+    }
   }
 }

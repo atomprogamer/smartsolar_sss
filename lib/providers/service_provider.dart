@@ -396,15 +396,42 @@ class ServiceProvider with ChangeNotifier {
   }
 
   /// Add service (admin only)
+  /// This method adds a new service to Firestore and the local list
+  /// It checks if a service with the same type already exists to avoid duplication
   Future<bool> addService(ServiceModel service) async {
     try {
       _isLoading = true;
       notifyListeners();
 
-      final docRef = _firestore.collection('services').doc();
-      final newService = service.copyWith(id: docRef.id);
+      // Check if a service with the same type already exists
+      final existingServicesQuery = await _firestore.collection('services')
+          .where('serviceType', isEqualTo: service.serviceType)
+          .get();
 
-      await docRef.set(newService.toMap());
+      if (existingServicesQuery.docs.isNotEmpty) {
+        _error = 'A service with this type already exists';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      // Create a new document with a generated ID
+      final docRef = _firestore.collection('services').doc();
+      final newService = service.copyWith(
+        id: docRef.id,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      // Add to Firestore with error handling
+      try {
+        await docRef.set(newService.toMap());
+      } catch (firestoreError) {
+        _error = 'Failed to save service to database: ${firestoreError.toString()}';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
 
       // Add to local list
       _services.add(newService);
@@ -415,25 +442,69 @@ class ServiceProvider with ChangeNotifier {
       return true;
     } catch (e) {
       _isLoading = false;
-      _error = e.toString();
+      _error = 'Error adding service: ${e.toString()}';
       notifyListeners();
-
       return false;
     }
   }
 
   /// Update service (admin only)
+  /// This method updates an existing service in Firestore and the local list
+  /// It ensures the service exists before updating and handles various exceptions
   Future<bool> updateService(ServiceModel service) async {
     try {
       _isLoading = true;
       notifyListeners();
 
-      await _firestore.collection('services').doc(service.id).update(service.toMap());
+      // Check if the service exists
+      final docRef = _firestore.collection('services').doc(service.id);
+      final docSnapshot = await docRef.get();
+
+      if (!docSnapshot.exists) {
+        _error = 'Service not found. It may have been deleted.';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      // Check if another service with the same type exists (but different ID)
+      if (service.serviceType.isNotEmpty) {
+        final existingServicesQuery = await _firestore.collection('services')
+            .where('serviceType', isEqualTo: service.serviceType)
+            .get();
+
+        for (var doc in existingServicesQuery.docs) {
+          if (doc.id != service.id) {
+            _error = 'Another service with this type already exists';
+            _isLoading = false;
+            notifyListeners();
+            return false;
+          }
+        }
+      }
+
+      // Update the service with the latest timestamp
+      final updatedService = service.copyWith(
+        updatedAt: DateTime.now(),
+      );
+
+      // Update in Firestore with error handling
+      try {
+        await docRef.update(updatedService.toMap());
+      } catch (firestoreError) {
+        _error = 'Failed to update service in database: ${firestoreError.toString()}';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
 
       // Update local list
       final index = _services.indexWhere((s) => s.id == service.id);
       if (index != -1) {
-        _services[index] = service;
+        _services[index] = updatedService;
+      } else {
+        // If not in local list, add it
+        _services.add(updatedService);
       }
 
       _isLoading = false;
@@ -442,20 +513,58 @@ class ServiceProvider with ChangeNotifier {
       return true;
     } catch (e) {
       _isLoading = false;
-      _error = e.toString();
+      _error = 'Error updating service: ${e.toString()}';
       notifyListeners();
-
       return false;
     }
   }
 
   /// Delete service (admin only)
+  /// This method deletes a service from Firestore and the local list
+  /// It ensures the service exists before deleting and handles various exceptions
   Future<bool> deleteService(String serviceId) async {
     try {
       _isLoading = true;
       notifyListeners();
 
-      await _firestore.collection('services').doc(serviceId).delete();
+      // Check if the service exists
+      final docRef = _firestore.collection('services').doc(serviceId);
+      final docSnapshot = await docRef.get();
+
+      if (!docSnapshot.exists) {
+        _error = 'Service not found. It may have been already deleted.';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      // Check if the service is referenced in any bookings
+      try {
+        final bookingsQuery = await _firestore.collection('serviceBookings')
+            .where('serviceId', isEqualTo: serviceId)
+            .limit(1)
+            .get();
+
+        if (bookingsQuery.docs.isNotEmpty) {
+          _error = 'Cannot delete service because it is referenced in bookings. Consider updating it instead.';
+          _isLoading = false;
+          notifyListeners();
+          return false;
+        }
+      } catch (bookingCheckError) {
+        // If we can't check bookings, proceed with deletion but log the error
+        print('Error checking bookings for service: $bookingCheckError');
+      }
+
+      // Delete from Firestore with error handling
+      try {
+        await docRef.delete();
+      } catch (firestoreError) {
+        _error = 'Failed to delete service from database: ${firestoreError.toString()}';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
 
       // Remove from local list
       _services.removeWhere((service) => service.id == serviceId);
@@ -466,9 +575,8 @@ class ServiceProvider with ChangeNotifier {
       return true;
     } catch (e) {
       _isLoading = false;
-      _error = e.toString();
+      _error = 'Error deleting service: ${e.toString()}';
       notifyListeners();
-
       return false;
     }
   }

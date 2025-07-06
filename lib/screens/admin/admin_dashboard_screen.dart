@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
@@ -15,6 +16,7 @@ import '../../widgets/custom_snackbar.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'manage_services_screen.dart';
 
 /// AdminDashboardScreen is the main screen for admin users after login
 class AdminDashboardScreen extends StatefulWidget {
@@ -684,10 +686,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               height: 50,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                image: DecorationImage(
-                  image: NetworkImage(product.mainImageUrl),
-                  fit: BoxFit.cover,
-                ),
+                color: Colors.grey.shade100,
+              ),
+              child: Icon(
+                product.categoryIconData,
+                size: 30,
+                color: AppTheme.primaryColor,
               ),
             ),
             title: Text(product.name),
@@ -907,23 +911,71 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
           Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Products',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    // Show add product dialog
-                    _showAddProductDialog();
-                  },
-                  icon: Icon(Icons.add),
-                  label: Text('Add Product'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
-                  ),
+                SizedBox(height: 8),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: () async {
+                        // Upload products from product_data.dart
+                        try {
+                          showCustomSnackBar(
+                            context: context,
+                            message: 'Uploading products from product_data.dart...',
+                            isError: false,
+                          );
+
+                          final success = await productProvider.seedFirestoreWithProductData();
+
+                          if (success) {
+                            showCustomSnackBar(
+                              context: context,
+                              message: 'Products uploaded successfully!',
+                              isError: false,
+                            );
+                          } else {
+                            final error = productProvider.error ?? 'Unknown error';
+                            showCustomSnackBar(
+                              context: context,
+                              message: 'Failed to upload products: $error',
+                              isError: true,
+                            );
+                            productProvider.clearError();
+                          }
+                        } catch (e) {
+                          showCustomSnackBar(
+                            context: context,
+                            message: 'Error uploading products: $e',
+                            isError: true,
+                          );
+                        }
+                      },
+                      icon: Icon(Icons.cloud_upload),
+                      label: Text('Upload Products'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        // Show add product dialog
+                        _showAddProductDialog();
+                      },
+                      icon: Icon(Icons.add),
+                      label: Text('Add Product'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -965,10 +1017,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               height: 50,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                image: DecorationImage(
-                  image: NetworkImage(product.mainImageUrl),
-                  fit: BoxFit.cover,
-                ),
+                color: Colors.grey.shade100,
+              ),
+              child: Icon(
+                product.categoryIconData,
+                size: 30,
+                color: AppTheme.primaryColor,
               ),
             ),
             title: Text(product.name),
@@ -2155,9 +2209,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 height: 200,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
-                  image: DecorationImage(
-                    image: NetworkImage(product.mainImageUrl),
-                    fit: BoxFit.cover,
+                  color: Colors.grey.shade100,
+                ),
+                child: Center(
+                  child: Icon(
+                    product.categoryIconData,
+                    size: 100,
+                    color: AppTheme.primaryColor,
                   ),
                 ),
               ),
@@ -2221,94 +2279,314 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget _buildServiceManagementTab() {
     final serviceProvider = Provider.of<ServiceProvider>(context);
 
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Service Management',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          SizedBox(height: 16),
-          Text(
-            'Services are essential for solar system installation, maintenance, and repair. '
-            'You can manage all services from this screen.',
-            style: TextStyle(fontSize: 16),
-          ),
-          SizedBox(height: 24),
-          Expanded(
-            child: serviceProvider.isLoading
-                ? Center(child: CircularProgressIndicator())
-                : GridView.count(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    children: [
-                      _buildServiceCard(
-                        'Installation',
-                        'Solar system installation services',
-                        Icons.build,
-                        Colors.blue,
-                      ),
-                      _buildServiceCard(
-                        'Maintenance',
-                        'Regular maintenance services',
-                        Icons.handyman,
-                        Colors.green,
-                      ),
-                      _buildServiceCard(
-                        'Repair',
-                        'Repair services for damaged systems',
-                        Icons.home_repair_service,
-                        Colors.orange,
-                      ),
-                      _buildServiceCard(
-                        'Consultation',
-                        'Expert consultation services',
-                        Icons.support_agent,
-                        Colors.purple,
-                      ),
-                      _buildServiceCard(
-                        'Cleaning',
-                        'Panel cleaning services',
-                        Icons.cleaning_services,
-                        Colors.teal,
-                      ),
-                    ],
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildServiceCard(String title, String description, IconData icon, Color color) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return RefreshIndicator(
+      onRefresh: () => serviceProvider.fetchServices(),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, size: 48, color: color),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Service Management',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ManageServicesScreen(),
+                      ),
+                    ).then((_) {
+                      // Refresh services when returning from the manage screen
+                      serviceProvider.fetchServices();
+                    });
+                  },
+                  icon: Icon(Icons.add_circle_outline),
+                  label: Text('Add New Service'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                ),
+              ],
+            ),
             SizedBox(height: 16),
             Text(
-              title,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
+              'Services are essential for solar system installation, maintenance, and repair. '
+              'Manage all services from this dashboard or use the detailed management screen.',
+              style: TextStyle(fontSize: 16),
             ),
-            SizedBox(height: 8),
-            Text(
-              description,
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-              textAlign: TextAlign.center,
+            SizedBox(height: 24),
+            Expanded(
+              child: serviceProvider.isLoading
+                  ? Center(child: CircularProgressIndicator())
+                  : StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance.collection('services').snapshots(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return Center(child: CircularProgressIndicator());
+                        }
+
+                        if (snapshot.hasError) {
+                          return Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.error_outline, color: Colors.red, size: 48),
+                                SizedBox(height: 16),
+                                Text('Error loading services'),
+                                SizedBox(height: 8),
+                                ElevatedButton.icon(
+                                  onPressed: () => serviceProvider.fetchServices(),
+                                  icon: Icon(Icons.refresh),
+                                  label: Text('Retry'),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        final services = snapshot.data?.docs ?? [];
+
+                        // Count services by type
+                        final Map<String, int> serviceCounts = {
+                          'installation': 0,
+                          'maintenance': 0,
+                          'repair': 0,
+                          'consultation': 0,
+                          'cleaning': 0,
+                        };
+
+                        for (var doc in services) {
+                          final data = doc.data() as Map<String, dynamic>;
+                          final type = data['serviceType']?.toString().toLowerCase() ?? '';
+                          if (serviceCounts.containsKey(type)) {
+                            serviceCounts[type] = serviceCounts[type]! + 1;
+                          }
+                        }
+
+                        return GridView.count(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                          children: [
+                            _buildServiceCardWithCount(
+                              'Installation',
+                              'Solar system installation services',
+                              Icons.build,
+                              Colors.blue,
+                              serviceCounts['installation'] ?? 0,
+                              _openManageServicesScreen,
+                            ),
+                            _buildServiceCardWithCount(
+                              'Maintenance',
+                              'Regular maintenance services',
+                              Icons.handyman,
+                              Colors.green,
+                              serviceCounts['maintenance'] ?? 0,
+                              _openManageServicesScreen,
+                            ),
+                            _buildServiceCardWithCount(
+                              'Repair',
+                              'Repair services for damaged systems',
+                              Icons.home_repair_service,
+                              Colors.orange,
+                              serviceCounts['repair'] ?? 0,
+                              _openManageServicesScreen,
+                            ),
+                            _buildServiceCardWithCount(
+                              'Consultation',
+                              'Expert consultation services',
+                              Icons.support_agent,
+                              Colors.purple,
+                              serviceCounts['consultation'] ?? 0,
+                              _openManageServicesScreen,
+                            ),
+                            _buildServiceCardWithCount(
+                              'Cleaning',
+                              'Panel cleaning services',
+                              Icons.cleaning_services,
+                              Colors.teal,
+                              serviceCounts['cleaning'] ?? 0,
+                              _openManageServicesScreen,
+                            ),
+                            _buildAddServiceCard(),
+                          ],
+                        );
+                      },
+                    ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  /// Build a service card with count and tap functionality
+  Widget _buildServiceCardWithCount(
+    String title, 
+    String description, 
+    IconData icon, 
+    Color color,
+    int count,
+    VoidCallback onTap,
+  ) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Card(
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Stack(
+                alignment: Alignment.topRight,
+                children: [
+                  Icon(icon, size: 48, color: color),
+                  if (count > 0)
+                    Container(
+                      padding: EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppTheme.secondaryColor,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        count.toString(),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              SizedBox(height: 16),
+              Text(
+                title,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 8),
+              Text(
+                description,
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: onTap,
+                icon: Icon(Icons.visibility),
+                label: Text('View Services'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: color,
+                  side: BorderSide(color: color),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Build a card for adding new services
+  Widget _buildAddServiceCard() {
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const ManageServicesScreen(),
+          ),
+        ).then((_) {
+          // Refresh services when returning from the manage screen
+          Provider.of<ServiceProvider>(context, listen: false).fetchServices();
+        });
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Card(
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.add_circle_outline,
+                  size: 48,
+                  color: AppTheme.primaryColor,
+                ),
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Add New Service',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Create a new service type or offering',
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 12),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ManageServicesScreen(),
+                    ),
+                  ).then((_) {
+                    // Refresh services when returning from the manage screen
+                    Provider.of<ServiceProvider>(context, listen: false).fetchServices();
+                  });
+                },
+                icon: Icon(Icons.add),
+                label: Text('Add Service'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Navigate to manage services screen
+  void _openManageServicesScreen() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ManageServicesScreen(),
+      ),
+    ).then((_) {
+      // Refresh services when returning from the manage screen
+      Provider.of<ServiceProvider>(context, listen: false).fetchServices();
+    });
   }
 
   Widget _buildOrderManagementTab() {

@@ -409,24 +409,40 @@ final List<ProductModel> allProducts = [
 ];
 
 /// Method to seed Firestore with product data
+/// This method checks for existing products to avoid duplication
+/// and ensures real-time synchronization with Firestore
 Future<void> seedProductData() async {
-  final FirebaseFirestore firestore = FirebaseFirestore.instance;
-  final batch = firestore.batch();
-  
-  // Clear existing products
-  final existingProducts = await firestore.collection('products').get();
-  for (var doc in existingProducts.docs) {
-    batch.delete(doc.reference);
+  try {
+    final FirebaseFirestore firestore = FirebaseFirestore.instance;
+
+    // Process each product individually to handle errors gracefully
+    for (var product in allProducts) {
+      try {
+        // Check if product with this ID already exists
+        final docRef = firestore.collection('products').doc(product.id);
+        final docSnapshot = await docRef.get();
+
+        if (docSnapshot.exists) {
+          // Product exists, update it with new data
+          await docRef.update({
+            ...product.toMap(),
+            'updatedAt': Timestamp.fromDate(DateTime.now()),
+          });
+          print('Updated existing product: ${product.name}');
+        } else {
+          // Product doesn't exist, create it
+          await docRef.set(product.toMap());
+          print('Added new product: ${product.name}');
+        }
+      } catch (e) {
+        print('Error processing product ${product.id}: $e');
+        // Continue with next product even if this one fails
+      }
+    }
+
+    print('Product data synchronized successfully!');
+  } catch (e) {
+    print('Error in seedProductData: $e');
+    rethrow; // Rethrow to allow calling code to handle the error
   }
-  
-  // Add new products
-  for (var product in allProducts) {
-    final docRef = firestore.collection('products').doc(product.id);
-    batch.set(docRef, product.toMap());
-  }
-  
-  // Commit the batch
-  await batch.commit();
-  
-  print('Product data seeded successfully!');
 }

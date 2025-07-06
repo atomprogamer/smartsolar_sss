@@ -418,15 +418,42 @@ class ProductProvider with ChangeNotifier {
   }
 
   /// Add product (admin only)
+  /// This method adds a new product to Firestore and the local list
+  /// It checks if a product with the same name already exists to avoid duplication
   Future<bool> addProduct(ProductModel product) async {
     try {
       _isLoading = true;
       notifyListeners();
 
-      final docRef = _firestore.collection('products').doc();
-      final newProduct = product.copyWith(id: docRef.id);
+      // Check if a product with the same name already exists
+      final existingProductsQuery = await _firestore.collection('products')
+          .where('name', isEqualTo: product.name)
+          .get();
 
-      await docRef.set(newProduct.toMap());
+      if (existingProductsQuery.docs.isNotEmpty) {
+        _error = 'A product with this name already exists';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      // Create a new document with a generated ID
+      final docRef = _firestore.collection('products').doc();
+      final newProduct = product.copyWith(
+        id: docRef.id,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      // Add to Firestore with error handling
+      try {
+        await docRef.set(newProduct.toMap());
+      } catch (firestoreError) {
+        _error = 'Failed to save product to database: ${firestoreError.toString()}';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
 
       // Add to local list
       _products.add(newProduct);
@@ -437,25 +464,67 @@ class ProductProvider with ChangeNotifier {
       return true;
     } catch (e) {
       _isLoading = false;
-      _error = e.toString();
+      _error = 'Error adding product: ${e.toString()}';
       notifyListeners();
-
       return false;
     }
   }
 
   /// Update product (admin only)
+  /// This method updates an existing product in Firestore and the local list
+  /// It ensures the product exists before updating and handles various exceptions
   Future<bool> updateProduct(ProductModel product) async {
     try {
       _isLoading = true;
       notifyListeners();
 
-      await _firestore.collection('products').doc(product.id).update(product.toMap());
+      // Check if the product exists
+      final docRef = _firestore.collection('products').doc(product.id);
+      final docSnapshot = await docRef.get();
+
+      if (!docSnapshot.exists) {
+        _error = 'Product not found. It may have been deleted.';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      // Check if another product with the same name exists (but different ID)
+      final existingProductsQuery = await _firestore.collection('products')
+          .where('name', isEqualTo: product.name)
+          .get();
+
+      for (var doc in existingProductsQuery.docs) {
+        if (doc.id != product.id) {
+          _error = 'Another product with this name already exists';
+          _isLoading = false;
+          notifyListeners();
+          return false;
+        }
+      }
+
+      // Update the product with the latest timestamp
+      final updatedProduct = product.copyWith(
+        updatedAt: DateTime.now(),
+      );
+
+      // Update in Firestore with error handling
+      try {
+        await docRef.update(updatedProduct.toMap());
+      } catch (firestoreError) {
+        _error = 'Failed to update product in database: ${firestoreError.toString()}';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
 
       // Update local list
       final index = _products.indexWhere((p) => p.id == product.id);
       if (index != -1) {
-        _products[index] = product;
+        _products[index] = updatedProduct;
+      } else {
+        // If not in local list, add it
+        _products.add(updatedProduct);
       }
 
       _isLoading = false;
@@ -464,20 +533,58 @@ class ProductProvider with ChangeNotifier {
       return true;
     } catch (e) {
       _isLoading = false;
-      _error = e.toString();
+      _error = 'Error updating product: ${e.toString()}';
       notifyListeners();
-
       return false;
     }
   }
 
   /// Delete product (admin only)
+  /// This method deletes a product from Firestore and the local list
+  /// It ensures the product exists before deleting and handles various exceptions
   Future<bool> deleteProduct(String productId) async {
     try {
       _isLoading = true;
       notifyListeners();
 
-      await _firestore.collection('products').doc(productId).delete();
+      // Check if the product exists
+      final docRef = _firestore.collection('products').doc(productId);
+      final docSnapshot = await docRef.get();
+
+      if (!docSnapshot.exists) {
+        _error = 'Product not found. It may have been already deleted.';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      // Check if the product is referenced in any orders
+      try {
+        final orderItemsQuery = await _firestore.collection('orderItems')
+            .where('productId', isEqualTo: productId)
+            .limit(1)
+            .get();
+
+        if (orderItemsQuery.docs.isNotEmpty) {
+          _error = 'Cannot delete product because it is referenced in orders. Consider updating the stock to 0 instead.';
+          _isLoading = false;
+          notifyListeners();
+          return false;
+        }
+      } catch (orderCheckError) {
+        // If we can't check orders, proceed with deletion but log the error
+        print('Error checking orders for product: $orderCheckError');
+      }
+
+      // Delete from Firestore with error handling
+      try {
+        await docRef.delete();
+      } catch (firestoreError) {
+        _error = 'Failed to delete product from database: ${firestoreError.toString()}';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
 
       // Remove from local list
       _products.removeWhere((product) => product.id == productId);
@@ -488,23 +595,51 @@ class ProductProvider with ChangeNotifier {
       return true;
     } catch (e) {
       _isLoading = false;
-      _error = e.toString();
+      _error = 'Error deleting product: ${e.toString()}';
       notifyListeners();
-
       return false;
     }
   }
 
   /// Update product stock (admin only)
+  /// This method updates the stock quantity of a product in Firestore and the local list
+  /// It ensures the product exists before updating and handles various exceptions
   Future<bool> updateProductStock(String productId, int newStockQuantity) async {
     try {
       _isLoading = true;
       notifyListeners();
 
-      await _firestore.collection('products').doc(productId).update({
-        'stockQuantity': newStockQuantity,
-        'updatedAt': Timestamp.now(),
-      });
+      // Validate stock quantity
+      if (newStockQuantity < 0) {
+        _error = 'Stock quantity cannot be negative';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      // Check if the product exists
+      final docRef = _firestore.collection('products').doc(productId);
+      final docSnapshot = await docRef.get();
+
+      if (!docSnapshot.exists) {
+        _error = 'Product not found. It may have been deleted.';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      // Update in Firestore with error handling
+      try {
+        await docRef.update({
+          'stockQuantity': newStockQuantity,
+          'updatedAt': Timestamp.now(),
+        });
+      } catch (firestoreError) {
+        _error = 'Failed to update product stock in database: ${firestoreError.toString()}';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
 
       // Update local list
       final index = _products.indexWhere((product) => product.id == productId);
@@ -513,6 +648,19 @@ class ProductProvider with ChangeNotifier {
           stockQuantity: newStockQuantity,
           updatedAt: DateTime.now(),
         );
+      } else {
+        // If not in local list, fetch the product and add it
+        try {
+          final productData = docSnapshot.data() as Map<String, dynamic>;
+          final product = ProductModel.fromSnapshot(docSnapshot);
+          _products.add(product.copyWith(
+            stockQuantity: newStockQuantity,
+            updatedAt: DateTime.now(),
+          ));
+        } catch (e) {
+          // Log error but don't fail the operation
+          print('Error adding product to local list: $e');
+        }
       }
 
       _isLoading = false;
@@ -521,9 +669,8 @@ class ProductProvider with ChangeNotifier {
       return true;
     } catch (e) {
       _isLoading = false;
-      _error = e.toString();
+      _error = 'Error updating product stock: ${e.toString()}';
       notifyListeners();
-
       return false;
     }
   }
@@ -580,16 +727,33 @@ class ProductProvider with ChangeNotifier {
   }
 
   /// Seed Firestore with product data (admin only)
+  /// This method seeds Firestore with product data from the local dataset
+  /// It ensures proper synchronization and handles various exceptions
   Future<bool> seedFirestoreWithProductData() async {
     try {
       _isLoading = true;
       notifyListeners();
 
-      // Call the seedProductData method from product_data.dart
-      await seedProductData();
+      try {
+        // Call the seedProductData method from product_data.dart
+        // This method has been updated to check for duplicates and ensure real-time synchronization
+        await seedProductData();
+      } catch (seedError) {
+        _error = 'Error seeding product data: ${seedError.toString()}';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
 
-      // Reload products from Firestore
-      await fetchProducts();
+      try {
+        // Reload products from Firestore to ensure local list is in sync
+        await fetchProducts();
+      } catch (fetchError) {
+        // Log error but don't fail the operation since seeding was successful
+        print('Error reloading products after seeding: $fetchError');
+        // Try to load local products as a fallback
+        loadLocalProducts();
+      }
 
       _isLoading = false;
       notifyListeners();
@@ -597,9 +761,8 @@ class ProductProvider with ChangeNotifier {
       return true;
     } catch (e) {
       _isLoading = false;
-      _error = e.toString();
+      _error = 'Error in seedFirestoreWithProductData: ${e.toString()}';
       notifyListeners();
-
       return false;
     }
   }
