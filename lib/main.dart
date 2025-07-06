@@ -5,16 +5,13 @@ import 'package:flutter/services.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// Import screens
-import 'screens/splash_screen.dart';
-import 'screens/auth/welcome_screen.dart';
-
 // Import providers
 import 'providers/auth_provider.dart';
 import 'providers/user_provider.dart';
 import 'providers/product_provider.dart';
 import 'providers/service_provider.dart';
-import 'providers/order_provider.dart';
+import 'providers/cart_provider.dart';
+import 'providers/order_provider_new.dart';
 import 'providers/knowledge_provider.dart';
 
 // Import utils
@@ -60,7 +57,11 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => ProductProvider()),
         ChangeNotifierProvider(create: (_) => ServiceProvider()),
-        ChangeNotifierProvider(create: (_) => OrderProvider()),
+        ChangeNotifierProvider(create: (_) => CartProvider()),
+        ChangeNotifierProxyProvider<CartProvider, CartOrderProvider>(
+          create: (context) => CartOrderProvider(Provider.of<CartProvider>(context, listen: false)),
+          update: (context, cartProvider, previous) => previous ?? CartOrderProvider(cartProvider),
+        ),
         ChangeNotifierProvider(create: (_) => KnowledgeProvider()),
       ],
       child: Consumer<AuthProvider>(

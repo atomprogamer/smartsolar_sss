@@ -5,7 +5,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../providers/product_provider.dart';
 import '../../providers/service_provider.dart';
-import '../../providers/order_provider.dart';
+import '../../providers/order_provider_new.dart';
 import '../../providers/knowledge_provider.dart';
 import '../../utils/theme.dart';
 import '../../utils/routes.dart';
@@ -47,13 +47,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       context,
       listen: false,
     );
-    final orderProvider = Provider.of<OrderProvider>(context, listen: false);
+    final cartOrderProvider = Provider.of<CartOrderProvider>(context, listen: false);
 
     await Future.wait<void>([
       userProvider.fetchPendingUsers(),
       productProvider.fetchProducts(),
       serviceProvider.fetchServices(),
-      orderProvider.fetchAllOrders(),
+      cartOrderProvider.fetchAllOrders(),
     ]);
   }
 
@@ -171,7 +171,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final userProvider = Provider.of<UserProvider>(context);
     final productProvider = Provider.of<ProductProvider>(context);
     final serviceProvider = Provider.of<ServiceProvider>(context);
-    final orderProvider = Provider.of<OrderProvider>(context);
+    final cartOrderProvider = Provider.of<CartOrderProvider>(context);
 
     return RefreshIndicator(
       onRefresh: _loadData,
@@ -187,7 +187,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 userProvider,
                 productProvider,
                 serviceProvider,
-                orderProvider,
+                cartOrderProvider,
               ),
 
               SizedBox(height: 24),
@@ -208,7 +208,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 8),
-              _buildRecentOrdersList(orderProvider.recentOrders),
+              _buildRecentOrdersList(cartOrderProvider.recentOrders),
 
               SizedBox(height: 24),
 
@@ -236,7 +236,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     UserProvider userProvider,
     ProductProvider productProvider,
     ServiceProvider serviceProvider,
-    OrderProvider orderProvider,
+    CartOrderProvider cartOrderProvider,
   ) {
     final stats = [
       {
@@ -253,7 +253,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       },
       {
         'title': 'Total Orders',
-        'value': orderProvider.allOrders.length.toString(),
+        'value': cartOrderProvider.allOrders.length.toString(),
         'icon': Icons.shopping_cart,
         'color': Colors.orange,
       },

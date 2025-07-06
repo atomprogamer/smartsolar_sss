@@ -6,7 +6,7 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter_html/flutter_html.dart';
 
 import '../../providers/product_provider.dart';
-import '../../providers/order_provider.dart';
+import '../../providers/cart_provider.dart';
 import '../../models/product_model.dart';
 import '../../utils/routes.dart';
 import '../../utils/theme.dart';
@@ -93,8 +93,8 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     });
 
     try {
-      final orderProvider = Provider.of<OrderProvider>(context, listen: false);
-      orderProvider.addToCart(_product!, _quantity);
+      final cartProvider = Provider.of<CartProvider>(context, listen: false);
+      cartProvider.addProductToCart(_product!, _quantity);
 
       setState(() {
         _addingToCart = false;

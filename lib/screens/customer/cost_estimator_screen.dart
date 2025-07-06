@@ -5,7 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../../providers/cost_estimate_provider.dart';
-import '../../providers/order_provider.dart';
+import '../../providers/cart_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/cost_estimate_model.dart';
 import '../../utils/theme.dart';
@@ -91,9 +91,14 @@ class _CostEstimatorScreenState extends State<CostEstimatorScreen> {
 
     try {
       final costEstimateProvider = Provider.of<CostEstimateProvider>(context, listen: false);
-      final orderProvider = Provider.of<OrderProvider>(context, listen: false);
+      final cartProvider = Provider.of<CartProvider>(context, listen: false);
 
-      costEstimateProvider.addEstimateProductsToCart(orderProvider.addToCart);
+      // Get estimated products and add them to cart
+      // This would need to be implemented in CostEstimateProvider to work with CartProvider
+      // For now, assuming there's a method to get products from estimate
+      costEstimateProvider.addEstimateProductsToCart((product, quantity) {
+        cartProvider.addProductToCart(product, quantity);
+      });
 
       setState(() {
         _addingToCart = false;

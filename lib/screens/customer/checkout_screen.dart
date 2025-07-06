@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../../providers/order_provider.dart';
+import '../../providers/order_provider_new.dart';
+import '../../providers/cart_provider.dart';
 import '../../models/order_model.dart';
 import '../../utils/theme.dart';
 import '../../utils/routes.dart';
@@ -48,9 +49,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     });
 
     try {
-      final orderProvider = Provider.of<OrderProvider>(context, listen: false);
+      final cartOrderProvider = Provider.of<CartOrderProvider>(context, listen: false);
+      final cartProvider = Provider.of<CartProvider>(context, listen: false);
 
-      if (orderProvider.cartItems.isEmpty) {
+      if (cartProvider.cartItems.isEmpty) {
         setState(() {
           _errorMessage = 'Your cart is empty';
           _isLoading = false;
@@ -65,7 +67,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       // For now, we'll use a dummy location
       final location = GeoPoint(0, 0);
 
-      final orderId = await orderProvider.createOrder(
+      final orderId = await cartOrderProvider.createOrder(
         shippingAddress: shippingAddress,
         paymentMethod: _selectedPaymentMethod,
         city: city,
@@ -129,7 +131,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       } else {
         // Error creating order
         setState(() {
-          _errorMessage = orderProvider.error ?? 'Failed to create order';
+          _errorMessage = cartOrderProvider.error ?? 'Failed to create order';
           _isLoading = false;
         });
       }
@@ -147,13 +149,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       appBar: AppBar(
         title: Text('Checkout'),
       ),
-      body: Consumer<OrderProvider>(
-        builder: (context, orderProvider, child) {
-          if (orderProvider.isLoading) {
+      body: Consumer2<CartOrderProvider, CartProvider>(
+        builder: (context, cartOrderProvider, cartProvider, child) {
+          if (cartOrderProvider.isLoading) {
             return Center(child: CircularProgressIndicator());
           }
 
-          if (orderProvider.cartItems.isEmpty) {
+          if (cartProvider.cartItems.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -191,8 +193,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           }
 
           // Filter cart items into products and services
-          final productItems = orderProvider.cartItems.where((item) => item.isProduct).toList();
-          final serviceItems = orderProvider.cartItems.where((item) => item.isService).toList();
+          final productItems = cartProvider.productItems;
+          final serviceItems = cartProvider.serviceItems;
 
           return SingleChildScrollView(
             padding: EdgeInsets.all(16),
@@ -285,7 +287,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                 ),
                               ),
                               Text(
-                                orderProvider.formattedCartTotal,
+                                cartProvider.formattedCartTotal,
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
@@ -473,3 +475,4 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 }
+
