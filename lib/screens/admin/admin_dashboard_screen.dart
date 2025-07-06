@@ -10,6 +10,11 @@ import '../../providers/knowledge_provider.dart';
 import '../../utils/theme.dart';
 import '../../utils/routes.dart';
 import '../../models/user_model.dart';
+import '../../models/product_model.dart';
+import '../../widgets/custom_snackbar.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 /// AdminDashboardScreen is the main screen for admin users after login
 class AdminDashboardScreen extends StatefulWidget {
@@ -31,10 +36,67 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     'Settings',
   ];
 
+  // Form controllers for product management
+  final _productFormKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  final _brandController = TextEditingController();
+  final _capacityController = TextEditingController();
+  final _priceController = TextEditingController();
+  final _stockQuantityController = TextEditingController();
+  final _technicalSpecificationsController = TextEditingController();
+
+  // Selected product category and installation type
+  dynamic _selectedCategory = 'solarPanel';
+  String? _selectedInstallationType;
+
+  // Selected images for product
+  List<File> _selectedProductImages = [];
+  List<String> _existingProductImageUrls = [];
+
+  // Loading state
+  bool _isProductLoading = false;
+  bool _isEditingProduct = false;
+  String? _selectedProductId;
+
   @override
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    // Dispose product form controllers
+    _nameController.dispose();
+    _descriptionController.dispose();
+    _brandController.dispose();
+    _capacityController.dispose();
+    _priceController.dispose();
+    _stockQuantityController.dispose();
+    _technicalSpecificationsController.dispose();
+    super.dispose();
+  }
+
+  /// Reset product form fields
+  void _resetProductForm() {
+    _productFormKey.currentState?.reset();
+    _nameController.clear();
+    _descriptionController.clear();
+    _brandController.clear();
+    _capacityController.clear();
+    _priceController.clear();
+    _stockQuantityController.clear();
+    _technicalSpecificationsController.clear();
+
+    setState(() {
+      _selectedCategory = 'solarPanel';
+      _selectedInstallationType = null;
+      _selectedProductImages = [];
+      _existingProductImageUrls = [];
+      _isEditingProduct = false;
+      _selectedProductId = null;
+    });
   }
 
   Future<void> _loadData() async {
@@ -977,9 +1039,340 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  // Placeholder for original method to avoid breaking references
+  /// Show dialog to add a new product
   void _showAddProductDialog() {
-    _showAddProductInfoDialog();
+    _resetProductForm();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.add_circle_outline, color: AppTheme.primaryColor),
+            SizedBox(width: 10),
+            Text('Add New Product'),
+          ],
+        ),
+        content: Container(
+          width: MediaQuery.of(context).size.width * 0.8,
+          height: MediaQuery.of(context).size.height * 0.8,
+          child: SingleChildScrollView(
+            child: Form(
+              key: _productFormKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Product Name
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: InputDecoration(
+                      labelText: 'Product Name',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      prefixIcon: Icon(Icons.inventory),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a product name';
+                      }
+                      return null;
+                    },
+                  ),
+                  SizedBox(height: 16),
+
+                  // Product Category
+                  DropdownButtonFormField<String>(
+                    value: _selectedCategory,
+                    decoration: InputDecoration(
+                      labelText: 'Category',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      prefixIcon: Icon(Icons.category),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                    ),
+                    items: [
+                      DropdownMenuItem(value: 'solarPanel', child: Text('Solar Panel')),
+                      DropdownMenuItem(value: 'battery', child: Text('Battery')),
+                      DropdownMenuItem(value: 'inverter', child: Text('Inverter')),
+                      DropdownMenuItem(value: 'stand', child: Text('Stand')),
+                      DropdownMenuItem(value: 'accessory', child: Text('Accessory')),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedCategory = value;
+                      });
+                    },
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please select a category';
+                      }
+                      return null;
+                    },
+                  ),
+                  SizedBox(height: 16),
+
+                  // Brand
+                  TextFormField(
+                    controller: _brandController,
+                    decoration: InputDecoration(
+                      labelText: 'Brand',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      prefixIcon: Icon(Icons.business),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a brand';
+                      }
+                      return null;
+                    },
+                  ),
+                  SizedBox(height: 16),
+
+                  // Capacity
+                  TextFormField(
+                    controller: _capacityController,
+                    decoration: InputDecoration(
+                      labelText: 'Capacity',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      prefixIcon: Icon(Icons.power),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                      hintText: 'e.g., 500W, 1000Wh, etc.',
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter capacity';
+                      }
+                      return null;
+                    },
+                  ),
+                  SizedBox(height: 16),
+
+                  // Price
+                  TextFormField(
+                    controller: _priceController,
+                    decoration: InputDecoration(
+                      labelText: 'Price (PKR)',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      prefixIcon: Icon(Icons.attach_money),
+                      prefixText: 'PKR ',
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                    ),
+                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a price';
+                      }
+                      final price = double.tryParse(value);
+                      if (price == null) {
+                        return 'Please enter a valid number';
+                      }
+                      if (price <= 0) {
+                        return 'Price must be greater than zero';
+                      }
+                      return null;
+                    },
+                  ),
+                  SizedBox(height: 16),
+
+                  // Stock Quantity
+                  TextFormField(
+                    controller: _stockQuantityController,
+                    decoration: InputDecoration(
+                      labelText: 'Stock Quantity',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      prefixIcon: Icon(Icons.inventory_2),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                    ),
+                    keyboardType: TextInputType.number,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter stock quantity';
+                      }
+                      final quantity = int.tryParse(value);
+                      if (quantity == null) {
+                        return 'Please enter a valid number';
+                      }
+                      if (quantity < 0) {
+                        return 'Quantity cannot be negative';
+                      }
+                      return null;
+                    },
+                  ),
+                  SizedBox(height: 16),
+
+                  // Installation Type (optional)
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Installation Type (optional)',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      prefixIcon: Icon(Icons.build),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                      hintText: 'e.g., Roof-mounted, Ground-mounted, etc.',
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedInstallationType = value.isEmpty ? null : value;
+                      });
+                    },
+                  ),
+                  SizedBox(height: 16),
+
+                  // Description
+                  TextFormField(
+                    controller: _descriptionController,
+                    decoration: InputDecoration(
+                      labelText: 'Description',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      prefixIcon: Icon(Icons.description),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                    ),
+                    maxLines: 3,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a description';
+                      }
+                      return null;
+                    },
+                  ),
+                  SizedBox(height: 16),
+
+                  // Technical Specifications
+                  TextFormField(
+                    controller: _technicalSpecificationsController,
+                    decoration: InputDecoration(
+                      labelText: 'Technical Specifications',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      prefixIcon: Icon(Icons.settings),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                    ),
+                    maxLines: 3,
+                  ),
+                  SizedBox(height: 16),
+
+                  // Product Images
+                  Text(
+                    'Product Images',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+
+                  ElevatedButton.icon(
+                    onPressed: _pickProductImages,
+                    icon: Icon(Icons.add_photo_alternate),
+                    label: Text('Add Images'),
+                    style: ElevatedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+
+                  // Display selected images
+                  if (_selectedProductImages.isNotEmpty) ...[
+                    SizedBox(height: 16),
+                    Container(
+                      height: 120,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _selectedProductImages.length,
+                        itemBuilder: (context, index) {
+                          return Stack(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(right: 8.0),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.file(
+                                    _selectedProductImages[index],
+                                    width: 120,
+                                    height: 120,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                top: 0,
+                                right: 8,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedProductImages.removeAt(index);
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.close,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (_productFormKey.currentState!.validate()) {
+                _saveProduct();
+                Navigator.pop(context);
+              }
+            },
+            child: Text('Add Product'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showEditProductInfoDialog(dynamic product) {
@@ -1011,9 +1404,697 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  // Placeholder for original method to avoid breaking references
+  /// Pick product images from gallery
+  Future<void> _pickProductImages() async {
+    try {
+      // Check if we've already reached the maximum number of images (5)
+      final int currentImageCount = _existingProductImageUrls.length + _selectedProductImages.length;
+      final int remainingSlots = 5 - currentImageCount;
+
+      if (remainingSlots <= 0) {
+        showCustomSnackBar(
+          context: context,
+          message: 'Maximum of 5 images allowed',
+          isError: true,
+        );
+        return;
+      }
+
+      final picker = ImagePicker();
+      final pickedFiles = await picker.pickMultiImage();
+
+      if (pickedFiles.isEmpty) {
+        return;
+      }
+
+      // Check file sizes and types
+      List<XFile> validFiles = [];
+      for (var file in pickedFiles) {
+        // Stop adding if we've reached the limit
+        if (validFiles.length >= remainingSlots) {
+          showCustomSnackBar(
+            context: context,
+            message: 'Only $remainingSlots more image${remainingSlots > 1 ? "s" : ""} can be added',
+            isError: true,
+          );
+          break;
+        }
+
+        final fileSize = await file.length();
+        final fileExt = file.name.split('.').last.toLowerCase();
+
+        // Check file size (max 5MB)
+        if (fileSize > 5 * 1024 * 1024) {
+          showCustomSnackBar(
+            context: context,
+            message: 'File ${file.name} exceeds 5MB limit',
+            isError: true,
+          );
+          continue;
+        }
+
+        // Check file type
+        if (!['jpg', 'jpeg', 'png'].contains(fileExt)) {
+          showCustomSnackBar(
+            context: context,
+            message: 'File ${file.name} is not a supported image type (jpg, jpeg, png)',
+            isError: true,
+          );
+          continue;
+        }
+
+        validFiles.add(file);
+      }
+
+      if (validFiles.isNotEmpty) {
+        setState(() {
+          _selectedProductImages.addAll(validFiles.map((e) => File(e.path)).toList());
+        });
+
+        showCustomSnackBar(
+          context: context,
+          message: 'Added ${validFiles.length} image${validFiles.length > 1 ? 's' : ''}',
+          isError: false,
+        );
+      }
+    } catch (e) {
+      showCustomSnackBar(
+        context: context,
+        message: 'Error picking images: $e',
+        isError: true,
+      );
+    }
+  }
+
+  /// Upload product images to Firebase Storage and return URLs
+  Future<List<String>> _uploadProductImages() async {
+    // If no new images, return existing URLs
+    if (_selectedProductImages.isEmpty) {
+      return _existingProductImageUrls;
+    }
+
+    final List<String> imageUrls = List.from(_existingProductImageUrls);
+    final storage = FirebaseStorage.instance;
+
+    try {
+      // Show progress indicator for multiple images
+      if (_selectedProductImages.length > 1) {
+        showCustomSnackBar(
+          context: context,
+          message: 'Uploading ${_selectedProductImages.length} images...',
+          isError: false,
+          duration: Duration(seconds: 1),
+        );
+      }
+
+      for (int i = 0; i < _selectedProductImages.length; i++) {
+        final image = _selectedProductImages[i];
+
+        // Create unique filename with timestamp and index
+        final fileName = 'product_${DateTime.now().millisecondsSinceEpoch}_$i';
+        final ref = storage.ref().child('products/$fileName');
+
+        // Upload file
+        final uploadTask = ref.putFile(image);
+
+        // Monitor upload progress
+        uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+          final progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          if (progress % 25 == 0) { // Log at 0%, 25%, 50%, 75%, 100%
+            debugPrint('Upload progress for image $i: ${progress.toStringAsFixed(0)}%');
+          }
+        });
+
+        final snapshot = await uploadTask;
+
+        // Get download URL and add to list
+        final downloadUrl = await snapshot.ref.getDownloadURL();
+        imageUrls.add(downloadUrl);
+      }
+
+      return imageUrls;
+    } catch (e) {
+      showCustomSnackBar(
+        context: context,
+        message: 'Error uploading images: $e',
+        isError: true,
+      );
+
+      // Return what we have so far
+      return imageUrls;
+    }
+  }
+
+  /// Save product to Firestore
+  Future<void> _saveProduct() async {
+    setState(() {
+      _isProductLoading = true;
+    });
+
+    try {
+      // Check if at least one image is selected or exists
+      if (_selectedProductImages.isEmpty && _existingProductImageUrls.isEmpty) {
+        showCustomSnackBar(
+          context: context,
+          message: 'Please add at least one image for the product',
+          isError: true,
+        );
+        setState(() {
+          _isProductLoading = false;
+        });
+        return;
+      }
+
+      // Upload images and get URLs
+      final imageUrls = await _uploadProductImages();
+
+      // Convert string category to enum
+      ProductCategory category;
+      switch (_selectedCategory) {
+        case 'solarPanel':
+          category = ProductCategory.solarPanel;
+          break;
+        case 'battery':
+          category = ProductCategory.battery;
+          break;
+        case 'inverter':
+          category = ProductCategory.inverter;
+          break;
+        case 'stand':
+          category = ProductCategory.stand;
+          break;
+        case 'accessory':
+          category = ProductCategory.accessory;
+          break;
+        default:
+          category = ProductCategory.solarPanel;
+      }
+
+      // Create product model
+      final product = ProductModel(
+        id: _isEditingProduct ? _selectedProductId! : DateTime.now().millisecondsSinceEpoch.toString(),
+        name: _nameController.text,
+        description: _descriptionController.text,
+        category: category,
+        brand: _brandController.text,
+        capacity: _capacityController.text,
+        price: double.parse(_priceController.text),
+        installationType: _selectedInstallationType,
+        technicalSpecifications: _technicalSpecificationsController.text.isEmpty ? null : _technicalSpecificationsController.text,
+        imageUrls: imageUrls,
+        stockQuantity: int.parse(_stockQuantityController.text),
+        createdAt: _isEditingProduct ? DateTime.now() : DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      final productProvider = Provider.of<ProductProvider>(context, listen: false);
+
+      // Save or update product
+      bool success;
+      if (_isEditingProduct) {
+        success = await productProvider.updateProduct(product);
+      } else {
+        success = await productProvider.addProduct(product);
+      }
+
+      if (success) {
+        _resetProductForm();
+        showCustomSnackBar(
+          context: context,
+          message: 'Product ${_isEditingProduct ? 'updated' : 'added'} successfully',
+          isError: false,
+        );
+      } else {
+        final error = productProvider.error ?? 'Unknown error';
+        showCustomSnackBar(
+          context: context,
+          message: 'Failed to ${_isEditingProduct ? 'update' : 'add'} product: $error',
+          isError: true,
+        );
+        productProvider.clearError();
+      }
+    } catch (e) {
+      showCustomSnackBar(
+        context: context,
+        message: 'Error: $e',
+        isError: true,
+      );
+    } finally {
+      setState(() {
+        _isProductLoading = false;
+      });
+    }
+  }
+
+  /// Show dialog to edit an existing product
   void _showEditProductDialog(dynamic product) {
-    _showEditProductInfoDialog(product);
+    // Reset form first
+    _resetProductForm();
+
+    // Set form values from product
+    setState(() {
+      _isEditingProduct = true;
+      _selectedProductId = product.id;
+      _nameController.text = product.name;
+      _descriptionController.text = product.description;
+      _brandController.text = product.brand;
+      _capacityController.text = product.capacity;
+      _priceController.text = product.price.toString();
+      _stockQuantityController.text = product.stockQuantity.toString();
+      _technicalSpecificationsController.text = product.technicalSpecifications ?? '';
+      _selectedInstallationType = product.installationType;
+      _existingProductImageUrls = List.from(product.imageUrls);
+
+      // Convert enum category to string
+      switch (product.category) {
+        case ProductCategory.solarPanel:
+          _selectedCategory = 'solarPanel';
+          break;
+        case ProductCategory.battery:
+          _selectedCategory = 'battery';
+          break;
+        case ProductCategory.inverter:
+          _selectedCategory = 'inverter';
+          break;
+        case ProductCategory.stand:
+          _selectedCategory = 'stand';
+          break;
+        case ProductCategory.accessory:
+          _selectedCategory = 'accessory';
+          break;
+        default:
+          _selectedCategory = 'solarPanel';
+      }
+    });
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.edit, color: AppTheme.primaryColor),
+            SizedBox(width: 10),
+            Text('Edit Product'),
+          ],
+        ),
+        content: Container(
+          width: MediaQuery.of(context).size.width * 0.8,
+          height: MediaQuery.of(context).size.height * 0.8,
+          child: SingleChildScrollView(
+            child: Form(
+              key: _productFormKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Product Name
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: InputDecoration(
+                      labelText: 'Product Name',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      prefixIcon: Icon(Icons.inventory),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a product name';
+                      }
+                      return null;
+                    },
+                  ),
+                  SizedBox(height: 16),
+
+                  // Product Category
+                  DropdownButtonFormField<String>(
+                    value: _selectedCategory,
+                    decoration: InputDecoration(
+                      labelText: 'Category',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      prefixIcon: Icon(Icons.category),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                    ),
+                    items: [
+                      DropdownMenuItem(value: 'solarPanel', child: Text('Solar Panel')),
+                      DropdownMenuItem(value: 'battery', child: Text('Battery')),
+                      DropdownMenuItem(value: 'inverter', child: Text('Inverter')),
+                      DropdownMenuItem(value: 'stand', child: Text('Stand')),
+                      DropdownMenuItem(value: 'accessory', child: Text('Accessory')),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedCategory = value;
+                      });
+                    },
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please select a category';
+                      }
+                      return null;
+                    },
+                  ),
+                  SizedBox(height: 16),
+
+                  // Brand
+                  TextFormField(
+                    controller: _brandController,
+                    decoration: InputDecoration(
+                      labelText: 'Brand',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      prefixIcon: Icon(Icons.business),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a brand';
+                      }
+                      return null;
+                    },
+                  ),
+                  SizedBox(height: 16),
+
+                  // Capacity
+                  TextFormField(
+                    controller: _capacityController,
+                    decoration: InputDecoration(
+                      labelText: 'Capacity',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      prefixIcon: Icon(Icons.power),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                      hintText: 'e.g., 500W, 1000Wh, etc.',
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter capacity';
+                      }
+                      return null;
+                    },
+                  ),
+                  SizedBox(height: 16),
+
+                  // Price
+                  TextFormField(
+                    controller: _priceController,
+                    decoration: InputDecoration(
+                      labelText: 'Price (PKR)',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      prefixIcon: Icon(Icons.attach_money),
+                      prefixText: 'PKR ',
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                    ),
+                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a price';
+                      }
+                      final price = double.tryParse(value);
+                      if (price == null) {
+                        return 'Please enter a valid number';
+                      }
+                      if (price <= 0) {
+                        return 'Price must be greater than zero';
+                      }
+                      return null;
+                    },
+                  ),
+                  SizedBox(height: 16),
+
+                  // Stock Quantity
+                  TextFormField(
+                    controller: _stockQuantityController,
+                    decoration: InputDecoration(
+                      labelText: 'Stock Quantity',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      prefixIcon: Icon(Icons.inventory_2),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                    ),
+                    keyboardType: TextInputType.number,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter stock quantity';
+                      }
+                      final quantity = int.tryParse(value);
+                      if (quantity == null) {
+                        return 'Please enter a valid number';
+                      }
+                      if (quantity < 0) {
+                        return 'Quantity cannot be negative';
+                      }
+                      return null;
+                    },
+                  ),
+                  SizedBox(height: 16),
+
+                  // Installation Type (optional)
+                  TextFormField(
+                    initialValue: _selectedInstallationType,
+                    decoration: InputDecoration(
+                      labelText: 'Installation Type (optional)',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      prefixIcon: Icon(Icons.build),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                      hintText: 'e.g., Roof-mounted, Ground-mounted, etc.',
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedInstallationType = value.isEmpty ? null : value;
+                      });
+                    },
+                  ),
+                  SizedBox(height: 16),
+
+                  // Description
+                  TextFormField(
+                    controller: _descriptionController,
+                    decoration: InputDecoration(
+                      labelText: 'Description',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      prefixIcon: Icon(Icons.description),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                    ),
+                    maxLines: 3,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a description';
+                      }
+                      return null;
+                    },
+                  ),
+                  SizedBox(height: 16),
+
+                  // Technical Specifications
+                  TextFormField(
+                    controller: _technicalSpecificationsController,
+                    decoration: InputDecoration(
+                      labelText: 'Technical Specifications',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      prefixIcon: Icon(Icons.settings),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                    ),
+                    maxLines: 3,
+                  ),
+                  SizedBox(height: 16),
+
+                  // Product Images
+                  Text(
+                    'Product Images',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+
+                  // Existing images
+                  if (_existingProductImageUrls.isNotEmpty) ...[
+                    Text(
+                      'Existing Images:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Container(
+                      height: 120,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _existingProductImageUrls.length,
+                        itemBuilder: (context, index) {
+                          return Stack(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(right: 8.0),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.network(
+                                    _existingProductImageUrls[index],
+                                    width: 120,
+                                    height: 120,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        width: 120,
+                                        height: 120,
+                                        color: Colors.grey.shade200,
+                                        child: Icon(Icons.broken_image, color: Colors.red),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                top: 0,
+                                right: 8,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _existingProductImageUrls.removeAt(index);
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.close,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                  ],
+
+                  ElevatedButton.icon(
+                    onPressed: _pickProductImages,
+                    icon: Icon(Icons.add_photo_alternate),
+                    label: Text('Add Images'),
+                    style: ElevatedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+
+                  // Display selected images
+                  if (_selectedProductImages.isNotEmpty) ...[
+                    SizedBox(height: 16),
+                    Text(
+                      'New Images:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Container(
+                      height: 120,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _selectedProductImages.length,
+                        itemBuilder: (context, index) {
+                          return Stack(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(right: 8.0),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.file(
+                                    _selectedProductImages[index],
+                                    width: 120,
+                                    height: 120,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                top: 0,
+                                right: 8,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedProductImages.removeAt(index);
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.close,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (_productFormKey.currentState!.validate()) {
+                _saveProduct();
+                Navigator.pop(context);
+              }
+            },
+            child: Text('Update Product'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showDeleteProductDialog(dynamic product) {
@@ -1054,63 +2135,78 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  /// Show dialog with product details
   void _showProductDetailsDialog(dynamic product) {
-    // Implement product details dialog
     showDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: Text('Product Details'),
-            content: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: double.infinity,
-                    height: 200,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      image: DecorationImage(
-                        image: NetworkImage(product.mainImageUrl),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  _buildProductDetailItem('Name', product.name),
-                  _buildProductDetailItem('Category', product.categoryName),
-                  _buildProductDetailItem('Brand', product.brand),
-                  _buildProductDetailItem('Capacity', product.capacity),
-                  _buildProductDetailItem('Price', product.formattedPrice),
-                  _buildProductDetailItem(
-                    'Stock',
-                    product.stockQuantity.toString(),
-                  ),
-                  _buildProductDetailItem('Description', product.description),
-                  if (product.technicalSpecifications != null)
-                    _buildProductDetailItem(
-                      'Technical Specifications',
-                      product.technicalSpecifications!,
-                    ),
-                  if (product.installationType != null)
-                    _buildProductDetailItem(
-                      'Installation Type',
-                      product.installationType!,
-                    ),
-                ],
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.info_outline, color: AppTheme.primaryColor),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                product.name,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('Close'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                height: 200,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  image: DecorationImage(
+                    image: NetworkImage(product.mainImageUrl),
+                    fit: BoxFit.cover,
+                  ),
+                ),
               ),
+              SizedBox(height: 16),
+              _buildProductDetailItem('Name', product.name),
+              _buildProductDetailItem('Category', product.categoryName),
+              _buildProductDetailItem('Brand', product.brand),
+              _buildProductDetailItem('Capacity', product.capacity),
+              _buildProductDetailItem('Price', product.formattedPrice),
+              _buildProductDetailItem(
+                'Stock',
+                product.stockQuantity.toString(),
+              ),
+              _buildProductDetailItem('Description', product.description),
+              if (product.technicalSpecifications != null)
+                _buildProductDetailItem(
+                  'Technical Specifications',
+                  product.technicalSpecifications!,
+                ),
+              if (product.installationType != null)
+                _buildProductDetailItem(
+                  'Installation Type',
+                  product.installationType!,
+                ),
             ],
           ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close'),
+          ),
+        ],
+      ),
     );
   }
 
+  /// Build a product detail item with label and value
   Widget _buildProductDetailItem(String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
