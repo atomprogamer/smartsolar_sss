@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/cart_item_model.dart';
 
 /// Enum for order status
 enum OrderStatus {
@@ -31,7 +32,7 @@ class OrderModel {
   final GeoPoint? location;
   final List<OrderItemModel> items;
   final String? paymentId;
-  
+
   /// Constructor
   OrderModel({
     required this.id,
@@ -48,7 +49,7 @@ class OrderModel {
     required this.items,
     this.paymentId,
   });
-  
+
   /// Create an empty order
   factory OrderModel.empty() {
     return OrderModel(
@@ -64,11 +65,11 @@ class OrderModel {
       items: [],
     );
   }
-  
+
   /// Create an order from a Firebase document snapshot
   factory OrderModel.fromSnapshot(DocumentSnapshot snapshot, List<OrderItemModel> items) {
     final data = snapshot.data() as Map<String, dynamic>;
-    
+
     return OrderModel(
       id: snapshot.id,
       userId: data['userId'] ?? '',
@@ -85,7 +86,7 @@ class OrderModel {
       paymentId: data['paymentId'],
     );
   }
-  
+
   /// Convert order to a map for Firestore
   Map<String, dynamic> toMap() {
     return {
@@ -102,7 +103,7 @@ class OrderModel {
       'paymentId': paymentId,
     };
   }
-  
+
   /// Create a copy of the order with updated fields
   OrderModel copyWith({
     String? id,
@@ -135,7 +136,7 @@ class OrderModel {
       paymentId: paymentId ?? this.paymentId,
     );
   }
-  
+
   /// Helper method to convert string to OrderStatus enum
   static OrderStatus _getOrderStatusFromString(String status) {
     switch (status) {
@@ -155,7 +156,7 @@ class OrderModel {
         return OrderStatus.pending;
     }
   }
-  
+
   /// Helper method to convert string to PaymentMethod enum
   static PaymentMethod _getPaymentMethodFromString(String method) {
     switch (method) {
@@ -167,10 +168,10 @@ class OrderModel {
         return PaymentMethod.bankTransfer;
     }
   }
-  
+
   /// Get formatted total amount in Pakistani Rupees (PKR)
   String get formattedTotalAmount => 'PKR ${totalAmount.toStringAsFixed(2)}';
-  
+
   /// Get formatted order date
   String get formattedOrderDate {
     final day = orderDate.day.toString().padLeft(2, '0');
@@ -178,7 +179,7 @@ class OrderModel {
     final year = orderDate.year.toString();
     return '$day-$month-$year';
   }
-  
+
   /// Get status name as a string
   String get statusName {
     switch (status) {
@@ -196,7 +197,7 @@ class OrderModel {
         return 'Completed';
     }
   }
-  
+
   /// Get payment method name as a string
   String get paymentMethodName {
     switch (paymentMethod) {
@@ -206,129 +207,228 @@ class OrderModel {
         return 'Cash on Delivery';
     }
   }
-  
+
   /// Check if the order is pending
   bool get isPending => status == OrderStatus.pending;
-  
+
   /// Check if the order is processing
   bool get isProcessing => status == OrderStatus.processing;
-  
+
   /// Check if the order is shipped
   bool get isShipped => status == OrderStatus.shipped;
-  
+
   /// Check if the order is delivered
   bool get isDelivered => status == OrderStatus.delivered;
-  
+
   /// Check if the order is cancelled
   bool get isCancelled => status == OrderStatus.cancelled;
-  
+
   /// Check if the order is completed
   bool get isCompleted => status == OrderStatus.completed;
-  
+
   /// Check if the order can be cancelled
   bool get canBeCancelled => status == OrderStatus.pending || status == OrderStatus.processing;
+}
+
+/// Enum for order item type
+enum OrderItemType {
+  product,
+  service,
 }
 
 /// OrderItem model class based on the class diagram
 class OrderItemModel {
   final String id;
   final String orderId;
-  final String productId;
+  final OrderItemType itemType;
+  final String itemId; // productId or serviceId
   final int quantity;
   final double price;
   final DateTime createdAt;
   final DateTime updatedAt;
-  final String? productName;
-  final String? productImage;
-  
+  final String? itemName;
+  final String? itemImage;
+
   /// Constructor
   OrderItemModel({
     required this.id,
     required this.orderId,
-    required this.productId,
+    required this.itemType,
+    required this.itemId,
     required this.quantity,
     required this.price,
     required this.createdAt,
     required this.updatedAt,
-    this.productName,
-    this.productImage,
+    this.itemName,
+    this.itemImage,
   });
-  
+
   /// Create an empty order item
   factory OrderItemModel.empty() {
     return OrderItemModel(
       id: '',
       orderId: '',
-      productId: '',
+      itemType: OrderItemType.product,
+      itemId: '',
       quantity: 0,
       price: 0.0,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
   }
-  
+
+  /// Create an order item from a product
+  factory OrderItemModel.fromProduct({
+    required String id,
+    required String orderId,
+    required String productId,
+    required int quantity,
+    required double price,
+    required String? productName,
+    required String? productImage,
+  }) {
+    return OrderItemModel(
+      id: id,
+      orderId: orderId,
+      itemType: OrderItemType.product,
+      itemId: productId,
+      quantity: quantity,
+      price: price,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+      itemName: productName,
+      itemImage: productImage,
+    );
+  }
+
+  /// Create an order item from a service
+  factory OrderItemModel.fromService({
+    required String id,
+    required String orderId,
+    required String serviceId,
+    required int quantity,
+    required double price,
+    required String? serviceName,
+    required String? serviceImage,
+  }) {
+    return OrderItemModel(
+      id: id,
+      orderId: orderId,
+      itemType: OrderItemType.service,
+      itemId: serviceId,
+      quantity: quantity,
+      price: price,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+      itemName: serviceName,
+      itemImage: serviceImage,
+    );
+  }
+
+  /// Create an order item from a cart item
+  factory OrderItemModel.fromCartItem({
+    required String id,
+    required String orderId,
+    required CartItemModel cartItem,
+  }) {
+    return OrderItemModel(
+      id: id,
+      orderId: orderId,
+      itemType: cartItem.isProduct ? OrderItemType.product : OrderItemType.service,
+      itemId: cartItem.itemId,
+      quantity: cartItem.quantity,
+      price: cartItem.price,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+      itemName: cartItem.itemName,
+      itemImage: cartItem.itemImage,
+    );
+  }
+
   /// Create an order item from a Firebase document snapshot
   factory OrderItemModel.fromSnapshot(DocumentSnapshot snapshot) {
     final data = snapshot.data() as Map<String, dynamic>;
-    
+
     return OrderItemModel(
       id: snapshot.id,
       orderId: data['orderId'] ?? '',
-      productId: data['productId'] ?? '',
+      itemType: _getItemTypeFromString(data['itemType'] ?? 'product'),
+      itemId: data['itemId'] ?? '',
       quantity: data['quantity'] ?? 0,
       price: (data['price'] ?? 0.0).toDouble(),
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       updatedAt: (data['updatedAt'] as Timestamp).toDate(),
-      productName: data['productName'],
-      productImage: data['productImage'],
+      itemName: data['itemName'],
+      itemImage: data['itemImage'],
     );
   }
-  
+
   /// Convert order item to a map for Firestore
   Map<String, dynamic> toMap() {
     return {
       'orderId': orderId,
-      'productId': productId,
+      'itemType': itemType.toString().split('.').last,
+      'itemId': itemId,
       'quantity': quantity,
       'price': price,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
-      'productName': productName,
-      'productImage': productImage,
+      'itemName': itemName,
+      'itemImage': itemImage,
     };
   }
-  
+
   /// Create a copy of the order item with updated fields
   OrderItemModel copyWith({
     String? id,
     String? orderId,
-    String? productId,
+    OrderItemType? itemType,
+    String? itemId,
     int? quantity,
     double? price,
     DateTime? createdAt,
     DateTime? updatedAt,
-    String? productName,
-    String? productImage,
+    String? itemName,
+    String? itemImage,
   }) {
     return OrderItemModel(
       id: id ?? this.id,
       orderId: orderId ?? this.orderId,
-      productId: productId ?? this.productId,
+      itemType: itemType ?? this.itemType,
+      itemId: itemId ?? this.itemId,
       quantity: quantity ?? this.quantity,
       price: price ?? this.price,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      productName: productName ?? this.productName,
-      productImage: productImage ?? this.productImage,
+      itemName: itemName ?? this.itemName,
+      itemImage: itemImage ?? this.itemImage,
     );
   }
-  
+
+  /// Helper method to convert string to OrderItemType enum
+  static OrderItemType _getItemTypeFromString(String type) {
+    switch (type) {
+      case 'product':
+        return OrderItemType.product;
+      case 'service':
+        return OrderItemType.service;
+      default:
+        return OrderItemType.product;
+    }
+  }
+
   /// Get formatted price in Pakistani Rupees (PKR)
   String get formattedPrice => 'PKR ${price.toStringAsFixed(2)}';
-  
+
   /// Get total price for this item
   double get totalPrice => price * quantity;
-  
+
   /// Get formatted total price in Pakistani Rupees (PKR)
   String get formattedTotalPrice => 'PKR ${totalPrice.toStringAsFixed(2)}';
+
+  /// Check if this is a product
+  bool get isProduct => itemType == OrderItemType.product;
+
+  /// Check if this is a service
+  bool get isService => itemType == OrderItemType.service;
 }

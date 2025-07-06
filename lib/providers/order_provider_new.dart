@@ -3,25 +3,24 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/order_model.dart';
-import '../models/product_model.dart';
-import '../models/cart_item_model.dart';
+import 'cart_provider.dart';
 
-/// Provider class for managing order data
-class OrderProvider with ChangeNotifier {
+/// Provider class for managing order data with cart integration
+class CartOrderProvider with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final CartProvider _cartProvider;
 
   List<OrderModel> _userOrders = [];
   List<OrderModel> _allOrders = [];
-  final List<OrderItemModel> _cartItems = [];
   bool _isLoading = false;
   String? _error;
 
+  /// Constructor
+  CartOrderProvider(this._cartProvider);
+
   /// Get user orders
   List<OrderModel> get userOrders => _userOrders;
-
-  /// Get cart items
-  List<OrderItemModel> get cartItems => _cartItems;
 
   /// Get pending orders
   List<OrderModel> get pendingOrders =>
@@ -52,16 +51,6 @@ class OrderProvider with ChangeNotifier {
 
   /// Get recent orders (admin only)
   List<OrderModel> get recentOrders => _allOrders.take(10).toList();
-
-  /// Get cart total
-  double get cartTotal =>
-      _cartItems.fold(0, (sum, item) => sum + item.totalPrice);
-
-  /// Get formatted cart total
-  String get formattedCartTotal => 'PKR ${cartTotal.toStringAsFixed(2)}';
-
-  /// Get cart item count
-  int get cartItemCount => _cartItems.length;
 
   /// Check if loading
   bool get isLoading => _isLoading;
@@ -249,84 +238,6 @@ class OrderProvider with ChangeNotifier {
     }
   }
 
-  /// Add product to cart
-  void addToCart(ProductModel product, int quantity) {
-    try {
-      // Check if product is already in cart
-      final existingItemIndex = _cartItems.indexWhere(
-        (item) => item.isProduct && item.itemId == product.id,
-      );
-
-      if (existingItemIndex != -1) {
-        // Update quantity if product is already in cart
-        final existingItem = _cartItems[existingItemIndex];
-        _cartItems[existingItemIndex] = existingItem.copyWith(
-          quantity: existingItem.quantity + quantity,
-          updatedAt: DateTime.now(),
-        );
-      } else {
-        // Add new item to cart
-        _cartItems.add(
-          OrderItemModel.fromProduct(
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
-            orderId: '',
-            productId: product.id,
-            quantity: quantity,
-            price: product.price,
-            productName: product.name,
-            productImage: product.mainImageUrl,
-          ),
-        );
-      }
-
-      notifyListeners();
-    } catch (e) {
-      _error = e.toString();
-      notifyListeners();
-    }
-  }
-
-  /// Update cart item quantity
-  void updateCartItemQuantity(String itemId, int quantity) {
-    try {
-      if (quantity <= 0) {
-        removeFromCart(itemId);
-        return;
-      }
-
-      final index = _cartItems.indexWhere((item) => item.id == itemId);
-
-      if (index != -1) {
-        _cartItems[index] = _cartItems[index].copyWith(
-          quantity: quantity,
-          updatedAt: DateTime.now(),
-        );
-
-        notifyListeners();
-      }
-    } catch (e) {
-      _error = e.toString();
-      notifyListeners();
-    }
-  }
-
-  /// Remove item from cart
-  void removeFromCart(String itemId) {
-    try {
-      _cartItems.removeWhere((item) => item.id == itemId);
-      notifyListeners();
-    } catch (e) {
-      _error = e.toString();
-      notifyListeners();
-    }
-  }
-
-  /// Clear cart
-  void clearCart() {
-    _cartItems.clear();
-    notifyListeners();
-  }
-
   /// Create order from cart
   Future<String?> createOrder({
     required String shippingAddress,
@@ -341,7 +252,7 @@ class OrderProvider with ChangeNotifier {
         return null;
       }
 
-      if (_cartItems.isEmpty) {
+      if (_cartProvider.cartItems.isEmpty) {
         _error = 'Cart is empty';
         notifyListeners();
         return null;
@@ -353,7 +264,17 @@ class OrderProvider with ChangeNotifier {
       // Create order
       final orderRef = _firestore.collection('orders').doc();
 
-      final totalAmount = cartTotal;
+      final totalAmount = _cartProvider.cartTotal;
+      final cartItems = _cartProvider.cartItems;
+
+      // Convert cart items to order items
+      final orderItems = cartItems.map((cartItem) => 
+        OrderItemModel.fromCartItem(
+          id: DateTime.now().millisecondsSinceEpoch.toString() + '_' + cartItem.id,
+          orderId: orderRef.id,
+          cartItem: cartItem,
+        )
+      ).toList();
 
       final newOrder = OrderModel(
         id: orderRef.id,
@@ -367,7 +288,7 @@ class OrderProvider with ChangeNotifier {
         updatedAt: DateTime.now(),
         city: city,
         location: location,
-        items: _cartItems,
+        items: orderItems,
       );
 
       await orderRef.set(newOrder.toMap());
@@ -375,12 +296,9 @@ class OrderProvider with ChangeNotifier {
       // Create order items
       final batch = _firestore.batch();
 
-      for (final item in _cartItems) {
-        final itemRef = _firestore.collection('orderItems').doc();
-
-        final orderItem = item.copyWith(id: itemRef.id, orderId: orderRef.id);
-
-        batch.set(itemRef, orderItem.toMap());
+      for (final item in orderItems) {
+        final itemRef = _firestore.collection('orderItems').doc(item.id);
+        batch.set(itemRef, item.toMap());
       }
 
       await batch.commit();
@@ -389,7 +307,7 @@ class OrderProvider with ChangeNotifier {
       _userOrders.add(newOrder);
 
       // Clear cart
-      clearCart();
+      _cartProvider.clearCart();
 
       _isLoading = false;
       notifyListeners();
