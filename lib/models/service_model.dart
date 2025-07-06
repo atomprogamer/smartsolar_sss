@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 
 /// Enum for service types
 enum ServiceType { installation, maintenance, repair, consultation, cleaning }
@@ -107,17 +108,35 @@ class ServiceModel {
   String get serviceTypeIcon {
     switch (serviceType.toLowerCase()) {
       case 'installation':
-        return 'assets/icons/installation.png';
+        return 'installation';
       case 'maintenance':
-        return 'assets/icons/maintenance.png';
+        return 'maintenance';
       case 'repair':
-        return 'assets/icons/repair.png';
+        return 'repair';
       case 'consultation':
-        return 'assets/icons/consultation.png';
+        return 'consultation';
       case 'cleaning':
-        return 'assets/icons/cleaning.png';
+        return 'cleaning';
       default:
-        return 'assets/icons/service.png';
+        return 'service';
+    }
+  }
+
+  /// Get service type icon data
+  IconData get serviceTypeIconData {
+    switch (serviceType.toLowerCase()) {
+      case 'installation':
+        return Icons.build;
+      case 'maintenance':
+        return Icons.handyman;
+      case 'repair':
+        return Icons.home_repair_service;
+      case 'consultation':
+        return Icons.support_agent;
+      case 'cleaning':
+        return Icons.cleaning_services;
+      default:
+        return Icons.miscellaneous_services;
     }
   }
 

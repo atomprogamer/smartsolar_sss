@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:math' as math;
 
 import '../models/user_model.dart';
 
@@ -13,6 +14,15 @@ class UserProvider with ChangeNotifier {
   List<UserModel> _users = [];
   bool _isLoading = false;
   String? _error;
+
+  // User count cache
+  int _totalUserCount = 0;
+  int _pendingUserCount = 0;
+  int _approvedUserCount = 0;
+  int _rejectedUserCount = 0;
+
+  // Cache timestamp
+  DateTime? _lastCacheUpdate;
 
   /// Get current user
   UserModel? get currentUser => _currentUser;
@@ -57,6 +67,22 @@ class UserProvider with ChangeNotifier {
   /// Get error message
   String? get error => _error;
 
+  /// Get total user count
+  int get totalUserCount => _totalUserCount;
+
+  /// Get pending user count
+  int get pendingUserCount => _pendingUserCount;
+
+  /// Get approved user count
+  int get approvedUserCount => _approvedUserCount;
+
+  /// Get rejected user count
+  int get rejectedUserCount => _rejectedUserCount;
+
+  /// Check if cache is valid (less than 5 minutes old)
+  bool get isCacheValid => _lastCacheUpdate != null && 
+      DateTime.now().difference(_lastCacheUpdate!).inMinutes < 5;
+
   /// Fetch current user data
   Future<void> fetchCurrentUser() async {
     try {
@@ -98,11 +124,18 @@ class UserProvider with ChangeNotifier {
 
       _users = usersSnapshot.docs.map((doc) => UserModel.fromSnapshot(doc)).toList();
 
+      // Update local counts based on the fetched users
+      _totalUserCount = _users.length;
+      _pendingUserCount = _users.where((user) => user.approvalStatus == ApprovalStatus.pending).length;
+      _approvedUserCount = _users.where((user) => user.approvalStatus == ApprovalStatus.approved).length;
+      _rejectedUserCount = _users.where((user) => user.approvalStatus == ApprovalStatus.rejected).length;
+      _lastCacheUpdate = DateTime.now();
+
       _isLoading = false;
       notifyListeners();
     } catch (e) {
       _isLoading = false;
-      _error = e.toString();
+      _error = 'Error fetching all users: ${e.toString()}';
       notifyListeners();
     }
   }
@@ -121,10 +154,21 @@ class UserProvider with ChangeNotifier {
       // Update local list
       final index = _users.indexWhere((user) => user.uid == userId);
       if (index != -1) {
+        // Check if the user was previously pending
+        final wasPending = _users[index].approvalStatus == ApprovalStatus.pending;
+
+        // Update the user in the local list
         _users[index] = _users[index].copyWith(
           approvalStatus: ApprovalStatus.approved,
           updatedAt: DateTime.now(),
         );
+
+        // Update counts if the user was previously pending
+        if (wasPending) {
+          _pendingUserCount = math.max(0, _pendingUserCount - 1);
+          _approvedUserCount++;
+          _lastCacheUpdate = DateTime.now();
+        }
       }
 
       _isLoading = false;
@@ -133,7 +177,7 @@ class UserProvider with ChangeNotifier {
       return true;
     } catch (e) {
       _isLoading = false;
-      _error = e.toString();
+      _error = 'Error approving user: ${e.toString()}';
       notifyListeners();
 
       return false;
@@ -154,10 +198,21 @@ class UserProvider with ChangeNotifier {
       // Update local list
       final index = _users.indexWhere((user) => user.uid == userId);
       if (index != -1) {
+        // Check if the user was previously pending
+        final wasPending = _users[index].approvalStatus == ApprovalStatus.pending;
+
+        // Update the user in the local list
         _users[index] = _users[index].copyWith(
           approvalStatus: ApprovalStatus.rejected,
           updatedAt: DateTime.now(),
         );
+
+        // Update counts if the user was previously pending
+        if (wasPending) {
+          _pendingUserCount = math.max(0, _pendingUserCount - 1);
+          _rejectedUserCount++;
+          _lastCacheUpdate = DateTime.now();
+        }
       }
 
       _isLoading = false;
@@ -166,7 +221,7 @@ class UserProvider with ChangeNotifier {
       return true;
     } catch (e) {
       _isLoading = false;
-      _error = e.toString();
+      _error = 'Error rejecting user: ${e.toString()}';
       notifyListeners();
 
       return false;
@@ -395,11 +450,23 @@ class UserProvider with ChangeNotifier {
       // Then add the new pending users
       _users.addAll(pendingUsers);
 
+      // Update pending users count
+      _pendingUserCount = pendingUsers.length;
+
+      // If we don't have a valid cache, fetch all counts
+      if (!isCacheValid) {
+        await fetchUserCounts();
+      } else {
+        // Otherwise just update the pending count and timestamp
+        _lastCacheUpdate = DateTime.now();
+        notifyListeners();
+      }
+
       _isLoading = false;
       notifyListeners();
     } catch (e) {
       _isLoading = false;
-      _error = e.toString();
+      _error = 'Error fetching pending users: ${e.toString()}';
       notifyListeners();
     }
   }
@@ -408,5 +475,82 @@ class UserProvider with ChangeNotifier {
   void clearError() {
     _error = null;
     notifyListeners();
+  }
+
+  /// Fetch user counts directly from Firestore
+  /// This method fetches accurate counts by querying each status separately
+  Future<void> fetchUserCounts() async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      // Fetch all users in a single query to minimize database calls
+      final usersSnapshot = await _firestore.collection('users').get();
+      final allUsers = usersSnapshot.docs;
+
+      // Calculate counts
+      _totalUserCount = allUsers.length;
+
+      // Count by approval status
+      _pendingUserCount = allUsers.where((doc) => 
+          (doc.data() as Map<String, dynamic>)['approvalStatus'] == 'pending').length;
+
+      _approvedUserCount = allUsers.where((doc) => 
+          (doc.data() as Map<String, dynamic>)['approvalStatus'] == 'approved').length;
+
+      _rejectedUserCount = allUsers.where((doc) => 
+          (doc.data() as Map<String, dynamic>)['approvalStatus'] == 'rejected').length;
+
+      // Update cache timestamp
+      _lastCacheUpdate = DateTime.now();
+
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _isLoading = false;
+      _error = 'Error fetching user counts: ${e.toString()}';
+      notifyListeners();
+    }
+  }
+
+  /// Fallback method to fetch user counts by getting all users
+  /// Used if the count() method is not available
+  Future<void> _fetchUserCountsFallback() async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      // Fetch all users
+      final usersSnapshot = await _firestore.collection('users').get();
+      final allUsers = usersSnapshot.docs.map((doc) => UserModel.fromSnapshot(doc)).toList();
+
+      // Calculate counts
+      _totalUserCount = allUsers.length;
+      _pendingUserCount = allUsers.where((user) => user.approvalStatus == ApprovalStatus.pending).length;
+      _approvedUserCount = allUsers.where((user) => user.approvalStatus == ApprovalStatus.approved).length;
+      _rejectedUserCount = allUsers.where((user) => user.approvalStatus == ApprovalStatus.rejected).length;
+
+      // Update cache timestamp
+      _lastCacheUpdate = DateTime.now();
+
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _isLoading = false;
+      _error = 'Error fetching user counts (fallback): ${e.toString()}';
+      notifyListeners();
+    }
+  }
+
+  /// Update local counts based on the current users list
+  /// This is used when we already have the users loaded
+  void _updateLocalCounts() {
+    if (_users.isNotEmpty) {
+      _totalUserCount = _users.length;
+      _pendingUserCount = _users.where((user) => user.approvalStatus == ApprovalStatus.pending).length;
+      _approvedUserCount = _users.where((user) => user.approvalStatus == ApprovalStatus.approved).length;
+      _rejectedUserCount = _users.where((user) => user.approvalStatus == ApprovalStatus.rejected).length;
+      _lastCacheUpdate = DateTime.now();
+    }
   }
 }

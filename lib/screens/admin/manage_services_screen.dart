@@ -33,6 +33,16 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
   List<File> _selectedImages = [];
   List<String> _existingImageUrls = [];
 
+  // Service type options
+  final List<String> _serviceTypes = [
+    'installation',
+    'maintenance',
+    'repair',
+    'consultation',
+    'cleaning',
+  ];
+  String _selectedServiceType = 'installation';
+
   @override
   void dispose() {
     _serviceTypeController.dispose();
@@ -53,6 +63,7 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
       _existingImageUrls = [];
       _isEditing = false;
       _selectedServiceId = null;
+      _selectedServiceType = 'installation';
     });
   }
 
@@ -116,7 +127,7 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
 
       final service = ServiceModel(
         id: _isEditing ? _selectedServiceId! : DateTime.now().millisecondsSinceEpoch.toString(),
-        serviceType: _serviceTypeController.text,
+        serviceType: _selectedServiceType,
         description: _descriptionController.text,
         price: double.parse(_priceController.text),
         duration: _durationController.text,
@@ -159,6 +170,7 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
     setState(() {
       _isEditing = true;
       _selectedServiceId = service.id;
+      _selectedServiceType = service.serviceType.toLowerCase();
       _serviceTypeController.text = service.serviceType;
       _descriptionController.text = service.description;
       _priceController.text = service.price.toString();
@@ -329,16 +341,34 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
               SizedBox(height: 16),
 
               // Service Type
-              TextFormField(
-                controller: _serviceTypeController,
+              DropdownButtonFormField<String>(
+                value: _selectedServiceType,
                 decoration: InputDecoration(
                   labelText: 'Service Type',
                   border: OutlineInputBorder(),
-                  hintText: 'e.g., Installation, Maintenance, Repair, etc.',
                 ),
+                items: _serviceTypes.map((String type) {
+                  return DropdownMenuItem<String>(
+                    value: type,
+                    child: Row(
+                      children: [
+                        Icon(_getIconForServiceType(type)),
+                        SizedBox(width: 10),
+                        Text(type.substring(0, 1).toUpperCase() + type.substring(1)),
+                      ],
+                    ),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  if (newValue != null) {
+                    setState(() {
+                      _selectedServiceType = newValue;
+                    });
+                  }
+                },
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter a service type';
+                    return 'Please select a service type';
                   }
                   return null;
                 },
@@ -558,5 +588,23 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
         ),
       ),
     );
+  }
+
+  /// Get icon for service type
+  IconData _getIconForServiceType(String type) {
+    switch (type.toLowerCase()) {
+      case 'installation':
+        return Icons.build;
+      case 'maintenance':
+        return Icons.handyman;
+      case 'repair':
+        return Icons.home_repair_service;
+      case 'consultation':
+        return Icons.support_agent;
+      case 'cleaning':
+        return Icons.cleaning_services;
+      default:
+        return Icons.miscellaneous_services;
+    }
   }
 }

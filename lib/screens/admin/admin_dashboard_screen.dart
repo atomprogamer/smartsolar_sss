@@ -50,7 +50,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final cartOrderProvider = Provider.of<CartOrderProvider>(context, listen: false);
 
     await Future.wait<void>([
-      userProvider.fetchPendingUsers(),
+      userProvider.fetchAllUsers(),      // Fetch all users instead of just pending
+      userProvider.fetchUserCounts(),    // Fetch accurate user counts
       productProvider.fetchProducts(),
       serviceProvider.fetchServices(),
       cartOrderProvider.fetchAllOrders(),
@@ -241,7 +242,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final stats = [
       {
         'title': 'Total Users',
-        'value': userProvider.users.length.toString(),
+        'value': userProvider.totalUserCount.toString(),
         'icon': Icons.people,
         'color': Colors.blue,
       },
@@ -259,7 +260,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       },
       {
         'title': 'Pending Approvals',
-        'value': userProvider.pendingUsers.length.toString(),
+        'value': userProvider.pendingUserCount.toString(),
         'icon': Icons.pending_actions,
         'color': Colors.red,
       },
@@ -1105,8 +1106,96 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Widget _buildServiceManagementTab() {
-    // Placeholder for service management tab
-    return Center(child: Text('Service Management Tab - Coming Soon'));
+    final serviceProvider = Provider.of<ServiceProvider>(context);
+
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Service Management',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 16),
+          Text(
+            'Services are essential for solar system installation, maintenance, and repair. '
+            'You can manage all services from this screen.',
+            style: TextStyle(fontSize: 16),
+          ),
+          SizedBox(height: 24),
+          Expanded(
+            child: serviceProvider.isLoading
+                ? Center(child: CircularProgressIndicator())
+                : GridView.count(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    children: [
+                      _buildServiceCard(
+                        'Installation',
+                        'Solar system installation services',
+                        Icons.build,
+                        Colors.blue,
+                      ),
+                      _buildServiceCard(
+                        'Maintenance',
+                        'Regular maintenance services',
+                        Icons.handyman,
+                        Colors.green,
+                      ),
+                      _buildServiceCard(
+                        'Repair',
+                        'Repair services for damaged systems',
+                        Icons.home_repair_service,
+                        Colors.orange,
+                      ),
+                      _buildServiceCard(
+                        'Consultation',
+                        'Expert consultation services',
+                        Icons.support_agent,
+                        Colors.purple,
+                      ),
+                      _buildServiceCard(
+                        'Cleaning',
+                        'Panel cleaning services',
+                        Icons.cleaning_services,
+                        Colors.teal,
+                      ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildServiceCard(String title, String description, IconData icon, Color color) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 48, color: color),
+            SizedBox(height: 16),
+            Text(
+              title,
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 8),
+            Text(
+              description,
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildOrderManagementTab() {
@@ -1129,5 +1218,118 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final month = date.month.toString().padLeft(2, '0');
     final year = date.year.toString();
     return '$day-$month-$year';
+  }
+
+  // Service management methods
+
+  IconData _getIconForServiceType(String type) {
+    switch (type.toLowerCase()) {
+      case 'installation':
+        return Icons.build;
+      case 'maintenance':
+        return Icons.handyman;
+      case 'repair':
+        return Icons.home_repair_service;
+      case 'consultation':
+        return Icons.support_agent;
+      case 'cleaning':
+        return Icons.cleaning_services;
+      default:
+        return Icons.miscellaneous_services;
+    }
+  }
+
+  void _showAddServiceDialog() {
+    // Show dialog to add a new service
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Add Service'),
+        content: Text('This functionality will be implemented soon.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditServiceDialog(dynamic service) {
+    // Show dialog to edit a service
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Edit Service'),
+        content: Text('This functionality will be implemented soon.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteServiceDialog(String serviceId) {
+    // Show dialog to confirm service deletion
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete Service'),
+        content: Text('Are you sure you want to delete this service?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Delete the service
+              Provider.of<ServiceProvider>(context, listen: false).deleteService(serviceId);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showServiceDetailsDialog(dynamic service) {
+    // Show dialog with service details
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Service Details'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                _getIconForServiceType(service.serviceType),
+                size: 48,
+                color: AppTheme.primaryColor,
+              ),
+              SizedBox(height: 16),
+              _buildProductDetailItem('Type', service.serviceType),
+              _buildProductDetailItem('Description', service.description),
+              _buildProductDetailItem('Price', service.formattedPrice),
+              _buildProductDetailItem('Duration', service.formattedDuration),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 }
