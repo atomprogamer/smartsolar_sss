@@ -1552,18 +1552,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     });
 
     try {
-      // Check if at least one image is selected or exists
-      if (_selectedProductImages.isEmpty && _existingProductImageUrls.isEmpty) {
-        showCustomSnackBar(
-          context: context,
-          message: 'Please add at least one image for the product',
-          isError: true,
-        );
-        setState(() {
-          _isProductLoading = false;
-        });
-        return;
-      }
+      // Image upload is optional, no validation needed
 
       // Upload images and get URLs
       final imageUrls = await _uploadProductImages();
