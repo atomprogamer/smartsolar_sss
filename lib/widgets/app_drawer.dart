@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../utils/routes.dart';
 import '../utils/theme.dart';
+import '../providers/auth_provider.dart';
 
 /// AppDrawer is a reusable drawer component that provides navigation
 /// to all customer-related screens in the application
@@ -9,6 +11,9 @@ class AppDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Get the auth provider to check if user is logged in
+    final authProvider = Provider.of<AuthProvider>(context);
+    final isLoggedIn = authProvider.isLoggedIn;
     return Drawer(
       child: Container(
         color: Colors.white,
@@ -50,7 +55,7 @@ class AppDrawer extends StatelessWidget {
                 ],
               ),
             ),
-            
+
             // Dashboard
             ListTile(
               leading: Icon(Icons.dashboard, color: AppTheme.primaryColor),
@@ -60,7 +65,7 @@ class AppDrawer extends StatelessWidget {
                 AppRoutes.navigateTo(context, AppRoutes.customerDashboard);
               },
             ),
-            
+
             // Products
             ListTile(
               leading: Icon(Icons.inventory_2, color: AppTheme.primaryColor),
@@ -70,7 +75,7 @@ class AppDrawer extends StatelessWidget {
                 AppRoutes.navigateTo(context, AppRoutes.productCatalog);
               },
             ),
-            
+
             // Services
             ListTile(
               leading: Icon(Icons.miscellaneous_services, color: AppTheme.primaryColor),
@@ -80,7 +85,7 @@ class AppDrawer extends StatelessWidget {
                 AppRoutes.navigateTo(context, AppRoutes.serviceCatalog);
               },
             ),
-            
+
             // Cart
             ListTile(
               leading: Icon(Icons.shopping_cart, color: AppTheme.primaryColor),
@@ -90,7 +95,7 @@ class AppDrawer extends StatelessWidget {
                 AppRoutes.navigateTo(context, AppRoutes.cart);
               },
             ),
-            
+
             // Orders
             ListTile(
               leading: Icon(Icons.receipt_long, color: AppTheme.primaryColor),
@@ -100,7 +105,7 @@ class AppDrawer extends StatelessWidget {
                 AppRoutes.navigateTo(context, AppRoutes.orderHistory);
               },
             ),
-            
+
             // Maintenance Requests
             ListTile(
               leading: Icon(Icons.build, color: AppTheme.primaryColor),
@@ -110,7 +115,7 @@ class AppDrawer extends StatelessWidget {
                 AppRoutes.navigateTo(context, AppRoutes.maintenanceRequest);
               },
             ),
-            
+
             // Cost Estimator
             ListTile(
               leading: Icon(Icons.calculate, color: AppTheme.primaryColor),
@@ -120,7 +125,7 @@ class AppDrawer extends StatelessWidget {
                 AppRoutes.navigateTo(context, AppRoutes.costEstimator);
               },
             ),
-            
+
             // Knowledge Base
             ListTile(
               leading: Icon(Icons.menu_book, color: AppTheme.primaryColor),
@@ -130,7 +135,7 @@ class AppDrawer extends StatelessWidget {
                 AppRoutes.navigateTo(context, AppRoutes.knowledgeBase);
               },
             ),
-            
+
             // Consultation
             ListTile(
               leading: Icon(Icons.support_agent, color: AppTheme.primaryColor),
@@ -140,9 +145,9 @@ class AppDrawer extends StatelessWidget {
                 AppRoutes.navigateTo(context, AppRoutes.consultation);
               },
             ),
-            
+
             Divider(),
-            
+
             // Profile
             ListTile(
               leading: Icon(Icons.person, color: AppTheme.primaryColor),
@@ -152,14 +157,27 @@ class AppDrawer extends StatelessWidget {
                 AppRoutes.navigateTo(context, AppRoutes.profile);
               },
             ),
-            
+
             // Login/Logout
             ListTile(
-              leading: Icon(Icons.login, color: AppTheme.primaryColor),
-              title: Text('Login'),
-              onTap: () {
+              leading: Icon(
+                isLoggedIn ? Icons.logout : Icons.login, 
+                color: AppTheme.primaryColor
+              ),
+              title: Text(isLoggedIn ? 'Logout' : 'Login'),
+              onTap: () async {
                 Navigator.pop(context);
-                AppRoutes.navigateTo(context, AppRoutes.login);
+                if (isLoggedIn) {
+                  // If logged in, sign out and navigate to login screen
+                  await authProvider.signOut();
+                  if (context.mounted) {
+                    // Navigate to login screen and remove all previous routes
+                    AppRoutes.navigateAndRemoveUntil(context, AppRoutes.login);
+                  }
+                } else {
+                  // If not logged in, navigate to login screen
+                  AppRoutes.navigateTo(context, AppRoutes.login);
+                }
               },
             ),
           ],

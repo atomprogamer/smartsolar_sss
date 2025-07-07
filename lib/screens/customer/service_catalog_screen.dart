@@ -136,8 +136,8 @@ class _ServiceCatalogScreenState extends State<ServiceCatalogScreen> {
               padding: EdgeInsets.symmetric(horizontal: 8),
               children: [
                 _buildServiceTypeTab('all', 'All Services', Icons.home_repair_service),
-                _buildServiceTypeTab('installation', 'Installation', Icons.build),
-                _buildServiceTypeTab('maintenance', 'Maintenance', Icons.handyman),
+                _buildServiceTypeTab('installation', 'Installation', Icons.engineering),
+                _buildServiceTypeTab('maintenance', 'Maintenance', Icons.build_circle),
                 _buildServiceTypeTab('repair', 'Repair', Icons.construction),
                 _buildServiceTypeTab('consultation', 'Consultation', Icons.support_agent),
                 _buildServiceTypeTab('cleaning', 'Cleaning', Icons.cleaning_services),
@@ -277,26 +277,18 @@ class _ServiceCatalogScreenState extends State<ServiceCatalogScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Service image
+            // Service icon
             ClipRRect(
               borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
               child: AspectRatio(
                 aspectRatio: 1.2,
-                child: CachedNetworkImage(
-                  imageUrl: service.mainImageUrl,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => Shimmer.fromColors(
-                    baseColor: Colors.grey[300]!,
-                    highlightColor: Colors.grey[100]!,
-                    child: Container(
-                      color: Colors.white,
-                    ),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    color: Colors.grey[200],
+                child: Container(
+                  color: AppTheme.secondaryColor.withOpacity(0.1),
+                  child: Center(
                     child: Icon(
-                      Icons.image_not_supported,
-                      color: Colors.grey[400],
+                      service.serviceTypeIconData,
+                      size: 80,
+                      color: AppTheme.secondaryColor,
                     ),
                   ),
                 ),

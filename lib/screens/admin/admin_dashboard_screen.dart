@@ -17,6 +17,7 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'manage_services_screen.dart';
+import '../../scripts/add_sample_services.dart' as sample_services;
 
 /// AdminDashboardScreen is the main screen for admin users after login
 class AdminDashboardScreen extends StatefulWidget {
@@ -57,6 +58,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   List<String> _existingProductImageUrls = [];
 
   // Loading state
+  bool _isLoading = false;
   bool _isProductLoading = false;
   bool _isEditingProduct = false;
   String? _selectedProductId;
@@ -2289,10 +2291,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Service Management',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                Expanded(
+                  child: Text(
+                    'Service Management',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
+                SizedBox(width: 8),
                 ElevatedButton.icon(
                   onPressed: () {
                     Navigator.push(
@@ -2502,75 +2508,113 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   /// Build a card for adding new services
   Widget _buildAddServiceCard() {
-    return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const ManageServicesScreen(),
-          ),
-        ).then((_) {
-          // Refresh services when returning from the manage screen
-          Provider.of<ServiceProvider>(context, listen: false).fetchServices();
-        });
-      },
-      borderRadius: BorderRadius.circular(12),
-      child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.add_circle_outline,
-                  size: 48,
-                  color: AppTheme.primaryColor,
-                ),
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withOpacity(0.1),
+                shape: BoxShape.circle,
               ),
-              SizedBox(height: 16),
-              Text(
-                'Add New Service',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
+              child: Icon(
+                Icons.add_circle_outline,
+                size: 48,
+                color: AppTheme.primaryColor,
               ),
-              SizedBox(height: 8),
-              Text(
-                'Create a new service type or offering',
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 12),
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ManageServicesScreen(),
-                    ),
-                  ).then((_) {
-                    // Refresh services when returning from the manage screen
-                    Provider.of<ServiceProvider>(context, listen: false).fetchServices();
-                  });
-                },
-                icon: Icon(Icons.add),
-                label: Text('Add Service'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Service Management',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Add new services or sample data',
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ManageServicesScreen(),
                   ),
+                ).then((_) {
+                  // Refresh services when returning from the manage screen
+                  Provider.of<ServiceProvider>(context, listen: false).fetchServices();
+                });
+              },
+              icon: Icon(Icons.add),
+              label: Text('Add Service'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
-            ],
-          ),
+            ),
+            SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () async {
+                try {
+                  setState(() {
+                    _isLoading = true;
+                  });
+
+                  // Run the function to add sample services
+                  await sample_services.addSampleServices();
+
+                  // Refresh services
+                  await Provider.of<ServiceProvider>(context, listen: false).fetchServices();
+
+                  // Show success message
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Sample services added successfully!'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  // Show error message
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error adding sample services: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                  print('Error adding sample services: $e');
+                } finally {
+                  if (mounted) {
+                    setState(() {
+                      _isLoading = false;
+                    });
+                  }
+                }
+              },
+              icon: Icon(Icons.dataset),
+              label: Text('Add Sample Services'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.secondaryColor,
+                side: BorderSide(color: AppTheme.secondaryColor),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

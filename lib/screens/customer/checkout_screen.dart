@@ -115,7 +115,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 child: Text('View Order History'),
                 onPressed: () {
                   Navigator.pop(context);
-                  AppRoutes.navigateAndReplace(context, AppRoutes.orderHistory);
+                  // Ensure order is fetched before navigating
+                  final orderProvider = Provider.of<CartOrderProvider>(context, listen: false);
+                  orderProvider.fetchUserOrders().then((_) {
+                    AppRoutes.navigateAndReplace(context, AppRoutes.orderHistory);
+                  });
                 },
               ),
               ElevatedButton(
@@ -475,4 +479,3 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 }
-

@@ -66,7 +66,11 @@ class CartOrderProvider with ChangeNotifier {
       }
 
       _isLoading = true;
+      _error = null; // Clear any previous errors
       notifyListeners();
+
+      // Clear existing orders to ensure we're not showing stale data
+      _userOrders = [];
 
       final ordersSnapshot =
           await _firestore
@@ -75,21 +79,33 @@ class CartOrderProvider with ChangeNotifier {
               .orderBy('orderDate', descending: true)
               .get();
 
+      if (ordersSnapshot.docs.isEmpty) {
+        // No orders found for this user
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
+
       final List<OrderModel> orders = [];
 
       for (final doc in ordersSnapshot.docs) {
-        final orderItemsSnapshot =
-            await _firestore
-                .collection('orderItems')
-                .where('orderId', isEqualTo: doc.id)
-                .get();
+        try {
+          final orderItemsSnapshot =
+              await _firestore
+                  .collection('orderItems')
+                  .where('orderId', isEqualTo: doc.id)
+                  .get();
 
-        final orderItems =
-            orderItemsSnapshot.docs
-                .map((itemDoc) => OrderItemModel.fromSnapshot(itemDoc))
-                .toList();
+          final orderItems =
+              orderItemsSnapshot.docs
+                  .map((itemDoc) => OrderItemModel.fromSnapshot(itemDoc))
+                  .toList();
 
-        orders.add(OrderModel.fromSnapshot(doc, orderItems));
+          orders.add(OrderModel.fromSnapshot(doc, orderItems));
+        } catch (itemError) {
+          print('Error loading items for order ${doc.id}: $itemError');
+          // Continue with next order even if this one fails
+        }
       }
 
       _userOrders = orders;
@@ -107,7 +123,11 @@ class CartOrderProvider with ChangeNotifier {
   Future<void> fetchAllOrders() async {
     try {
       _isLoading = true;
+      _error = null; // Clear any previous errors
       notifyListeners();
+
+      // Clear existing orders to ensure we're not showing stale data
+      _allOrders = [];
 
       final ordersSnapshot =
           await _firestore
@@ -115,21 +135,33 @@ class CartOrderProvider with ChangeNotifier {
               .orderBy('orderDate', descending: true)
               .get();
 
+      if (ordersSnapshot.docs.isEmpty) {
+        // No orders found
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
+
       final List<OrderModel> orders = [];
 
       for (final doc in ordersSnapshot.docs) {
-        final orderItemsSnapshot =
-            await _firestore
-                .collection('orderItems')
-                .where('orderId', isEqualTo: doc.id)
-                .get();
+        try {
+          final orderItemsSnapshot =
+              await _firestore
+                  .collection('orderItems')
+                  .where('orderId', isEqualTo: doc.id)
+                  .get();
 
-        final orderItems =
-            orderItemsSnapshot.docs
-                .map((itemDoc) => OrderItemModel.fromSnapshot(itemDoc))
-                .toList();
+          final orderItems =
+              orderItemsSnapshot.docs
+                  .map((itemDoc) => OrderItemModel.fromSnapshot(itemDoc))
+                  .toList();
 
-        orders.add(OrderModel.fromSnapshot(doc, orderItems));
+          orders.add(OrderModel.fromSnapshot(doc, orderItems));
+        } catch (itemError) {
+          print('Error loading items for order ${doc.id}: $itemError');
+          // Continue with next order even if this one fails
+        }
       }
 
       _allOrders = orders;
@@ -147,6 +179,7 @@ class CartOrderProvider with ChangeNotifier {
   Future<List<OrderModel>> fetchOrdersByStatus(OrderStatus status) async {
     try {
       _isLoading = true;
+      _error = null; // Clear any previous errors
       notifyListeners();
 
       final statusString = status.toString().split('.').last;
@@ -158,21 +191,33 @@ class CartOrderProvider with ChangeNotifier {
               .orderBy('orderDate', descending: true)
               .get();
 
+      if (ordersSnapshot.docs.isEmpty) {
+        // No orders found with this status
+        _isLoading = false;
+        notifyListeners();
+        return [];
+      }
+
       final List<OrderModel> orders = [];
 
       for (final doc in ordersSnapshot.docs) {
-        final orderItemsSnapshot =
-            await _firestore
-                .collection('orderItems')
-                .where('orderId', isEqualTo: doc.id)
-                .get();
+        try {
+          final orderItemsSnapshot =
+              await _firestore
+                  .collection('orderItems')
+                  .where('orderId', isEqualTo: doc.id)
+                  .get();
 
-        final orderItems =
-            orderItemsSnapshot.docs
-                .map((itemDoc) => OrderItemModel.fromSnapshot(itemDoc))
-                .toList();
+          final orderItems =
+              orderItemsSnapshot.docs
+                  .map((itemDoc) => OrderItemModel.fromSnapshot(itemDoc))
+                  .toList();
 
-        orders.add(OrderModel.fromSnapshot(doc, orderItems));
+          orders.add(OrderModel.fromSnapshot(doc, orderItems));
+        } catch (itemError) {
+          print('Error loading items for order ${doc.id}: $itemError');
+          // Continue with next order even if this one fails
+        }
       }
 
       _isLoading = false;
@@ -201,7 +246,18 @@ class CartOrderProvider with ChangeNotifier {
         return localOrder;
       }
 
+      // Also check in all orders list (for admin)
+      final adminLocalOrder = _allOrders.firstWhere(
+        (order) => order.id == orderId,
+        orElse: () => OrderModel.empty(),
+      );
+
+      if (adminLocalOrder.id.isNotEmpty) {
+        return adminLocalOrder;
+      }
+
       _isLoading = true;
+      _error = null; // Clear any previous errors
       notifyListeners();
 
       final orderDoc = await _firestore.collection('orders').doc(orderId).get();
@@ -212,23 +268,31 @@ class CartOrderProvider with ChangeNotifier {
         return null;
       }
 
-      final orderItemsSnapshot =
-          await _firestore
-              .collection('orderItems')
-              .where('orderId', isEqualTo: orderId)
-              .get();
+      try {
+        final orderItemsSnapshot =
+            await _firestore
+                .collection('orderItems')
+                .where('orderId', isEqualTo: orderId)
+                .get();
 
-      final orderItems =
-          orderItemsSnapshot.docs
-              .map((itemDoc) => OrderItemModel.fromSnapshot(itemDoc))
-              .toList();
+        final orderItems =
+            orderItemsSnapshot.docs
+                .map((itemDoc) => OrderItemModel.fromSnapshot(itemDoc))
+                .toList();
 
-      final order = OrderModel.fromSnapshot(orderDoc, orderItems);
+        final order = OrderModel.fromSnapshot(orderDoc, orderItems);
 
-      _isLoading = false;
-      notifyListeners();
+        _isLoading = false;
+        notifyListeners();
 
-      return order;
+        return order;
+      } catch (itemError) {
+        print('Error loading items for order $orderId: $itemError');
+        _isLoading = false;
+        _error = 'Error loading order items: $itemError';
+        notifyListeners();
+        return null;
+      }
     } catch (e) {
       _isLoading = false;
       _error = e.toString();

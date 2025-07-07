@@ -126,15 +126,15 @@ class ServiceModel {
   IconData get serviceTypeIconData {
     switch (serviceType.toLowerCase()) {
       case 'installation':
-        return Icons.build;
+        return Icons.engineering; // More specific icon for installation
       case 'maintenance':
-        return Icons.handyman;
+        return Icons.build_circle; // More distinct icon for maintenance
       case 'repair':
-        return Icons.home_repair_service;
+        return Icons.construction; // Better icon for repair services
       case 'consultation':
-        return Icons.support_agent;
+        return Icons.support_agent; // Good icon for consultation
       case 'cleaning':
-        return Icons.cleaning_services;
+        return Icons.cleaning_services; // Good icon for cleaning
       default:
         return Icons.miscellaneous_services;
     }
